@@ -106,13 +106,17 @@ class DefaultMediaOptimizationSelectorPresenter(
 
             val sizeEstimations = listOf(VideoCompressionPreset.HIGH, VideoCompressionPreset.STANDARD)
                 .map { preset ->
+                    val originalSize = localMedia.info.fileSize ?: 0L
                     val estimatedSize = if (preset == VideoCompressionPreset.HIGH) {
                         // HIGH is SyncMe's Original path: no video re-encoding.
-                        localMedia.info.fileSize ?: 0L
+                        originalSize
                     } else {
                         val bitRateAsBytes = preset.compressorHelper().calculateOptimalBitrate(videoDimensions, 30) / 8f
                         val durationInSeconds = duration.inWholeSeconds.toFloat()
-                        (bitRateAsBytes * durationInSeconds * 1.1f).roundToLong()
+                        val rawEstimate = (bitRateAsBytes * durationInSeconds * 1.1f).roundToLong()
+                        // The encoder caps video bitrate to the source bitrate; never present a
+                        // "compressed" estimate that is larger than the source file.
+                        if (originalSize > 0L) rawEstimate.coerceAtMost(originalSize) else rawEstimate
                     }
                     VideoUploadEstimation(
                         preset = preset,
