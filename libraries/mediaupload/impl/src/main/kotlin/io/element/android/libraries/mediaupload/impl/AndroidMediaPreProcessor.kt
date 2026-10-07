@@ -286,6 +286,15 @@ class AndroidMediaPreProcessor(
             .getOrNull()
 
         if (resultFile != null) {
+            val originalSize = runCatching {
+                contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: -1L
+            }.getOrDefault(-1L)
+            if (originalSize > 0L && resultFile.length() >= originalSize) {
+                Timber.d("Compressed video is not smaller than original; sending original instead")
+                resultFile.delete()
+                return processOriginalVideo(uri, mimeType)
+            }
+
             val thumbnailInfo = thumbnailFactory.createVideoThumbnail(resultFile)
             val videoInfo = extractVideoMetadata(resultFile, mimeType, thumbnailInfo)
             return MediaUploadInfo.Video(
