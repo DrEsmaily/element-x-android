@@ -126,10 +126,7 @@ fun PreferencesRootView(
                     onAddAccountClick = onAddAccountClick,
                 )
             }
-            HorizontalDivider(
-                thickness = 8.dp,
-                color = ElementTheme.colors.bgSubtleSecondary,
-            )
+            HorizontalDivider()
             // Account settings section
             PreferencesAccountView(
                 state = state.preferencesAccountState,
@@ -209,10 +206,7 @@ private fun ColumnScope.MultiAccountSection(
     state: PreferencesRootState,
     onAddAccountClick: () -> Unit,
 ) {
-    HorizontalDivider(
-        thickness = 8.dp,
-        color = ElementTheme.colors.bgSubtleSecondary,
-    )
+    HorizontalDivider()
     if (state.otherSessions.isEmpty()) {
         AddAccountItem(onAddAccountClick)
     } else {
