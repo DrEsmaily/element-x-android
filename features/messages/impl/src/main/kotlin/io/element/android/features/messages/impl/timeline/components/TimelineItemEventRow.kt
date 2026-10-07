@@ -327,7 +327,7 @@ fun TimelineItemEventRow(
                 Column(
                     modifier = Modifier
                         .align(if (event.isMine) Alignment.End else Alignment.Start)
-                        .padding(horizontal = 16.dp, top = 4.dp)
+                        .padding(start = 16.dp, end = 16.dp, top = 4.dp)
                         .fillMaxWidth(0.55f),
                 ) {
                     Text(
