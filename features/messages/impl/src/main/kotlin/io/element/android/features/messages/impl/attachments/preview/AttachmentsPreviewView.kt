@@ -347,8 +347,6 @@ private fun AttachmentPreviewContent(
         val mediaInfo = (state.attachments[state.currentIndex] as? Attachment.Media)?.localMedia?.info
         if (mediaInfo?.isImageAttachment() == true) {
             ImageOptimizationSelector(state.mediaOptimizationSelectorState)
-        } else if (mediaInfo?.mimeType?.isMimeTypeVideo() == true) {
-            VideoPresetSelector(state = state.mediaOptimizationSelectorState)
         }
 
         val sizeFormatter = rememberFileSizeFormatter()
