@@ -606,21 +606,8 @@ private fun TimelineItemEventRowContent(
                 onMessageLongClick = onLongClick,
                 inReplyToClick = inReplyToClick,
                 eventSink = eventSink,
-                reactionContent = if (event.reactionsState.reactions.isNotEmpty()) {
-                    {
-                        TimelineItemReactionsView(
-                            reactionsState = event.reactionsState,
-                            userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
-                            isOutgoing = event.isMine,
-                            onReactionClick = onReactionClick,
-                            onReactionLongClick = onReactionLongClick,
-                            onMoreReactionsClick = { onMoreReactionsClick(event) },
-                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp),
-                        )
-                    }
-                } else {
-                    null
-                },
+                // Lag diagnostic: disable reaction rendering entirely.
+                reactionContent = null,
                 eventContentView = eventContentView,
             )
         }
