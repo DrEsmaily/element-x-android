@@ -105,7 +105,7 @@ enum class FeatureFlags(
         title = "Jump to unread messages",
         description = "Show a button to jump to the read marker, plus a count badge on the scroll-to-bottom button " +
             "when new messages arrive while scrolled away.",
-        defaultValue = { true },
+        defaultValue = { false },
         isFinished = false,
     ),
     SlashCommand(
