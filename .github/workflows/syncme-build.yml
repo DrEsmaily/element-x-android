@@ -52,25 +52,9 @@ jobs:
       - name: Make baseline installable beside Google Play
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          p = Path("app/build.gradle.kts")
-          s = p.read_text()
-          old = '''        getByName("release") {
-            resValue("string", "app_name", baseAppName)
-'''
-          new = '''        getByName("release") {
-            applicationIdSuffix = ".baseline"
-            resValue("string", "app_name", "$baseAppName Baseline")
-'''
-          if s.count(old) != 1:
-              raise SystemExit(f"Expected exactly one release block match, found {s.count(old)}")
-          p.write_text(s.replace(old, new, 1))
-          PY
-
+          test "$(grep -c 'getByName("release") {' app/build.gradle.kts)" -eq 1
+          sed -i '/getByName("release") {/a\            applicationIdSuffix = ".baseline"' app/build.gradle.kts
           git diff --check
-          git diff -- app/build.gradle.kts
           grep -F 'applicationIdSuffix = ".baseline"' app/build.gradle.kts
 
       - name: Use JDK 21
