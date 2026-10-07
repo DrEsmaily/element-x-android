@@ -180,6 +180,7 @@ fun TimelineItemEventRow(
     onReadReceiptClick: (event: TimelineItem.Event) -> Unit,
     onSwipeToReply: () -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
+    reactionContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit = { contentModifier, onContentLayoutChange ->
         // Only pass down a custom clickable lambda if the content can be clicked separately
@@ -530,7 +531,6 @@ private fun TimelineItemEventRowContent(
         val (
             sender,
             message,
-            reactions,
             pinIcon,
         ) = createRefs()
 
@@ -605,6 +605,21 @@ private fun TimelineItemEventRowContent(
                 onMessageLongClick = onLongClick,
                 inReplyToClick = inReplyToClick,
                 eventSink = eventSink,
+                reactionContent = if (event.reactionsState.reactions.isNotEmpty()) {
+                    {
+                        TimelineItemReactionsView(
+                            reactionsState = event.reactionsState,
+                            userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
+                            isOutgoing = event.isMine,
+                            onReactionClick = onReactionClick,
+                            onReactionLongClick = onReactionLongClick,
+                            onMoreReactionsClick = { onMoreReactionsClick(event) },
+                            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 4.dp),
+                        )
+                    }
+                } else {
+                    null
+                },
                 eventContentView = eventContentView,
             )
         }
@@ -630,33 +645,6 @@ private fun TimelineItemEventRowContent(
             )
         }
 
-        // Reactions
-        if (event.reactionsState.reactions.isNotEmpty()) {
-            TimelineItemReactionsView(
-                reactionsState = event.reactionsState,
-                userCanSendReaction = timelineRoomInfo.userHasPermissionToSendReaction,
-                isOutgoing = event.isMine,
-                onReactionClick = onReactionClick,
-                onReactionLongClick = onReactionLongClick,
-                onMoreReactionsClick = { onMoreReactionsClick(event) },
-                modifier = Modifier
-                    .constrainAs(reactions) {
-                        top.linkTo(message.bottom, margin = (-4).dp)
-                        linkStartOrEnd(event)
-                    }
-                    .zIndex(1f)
-                    .padding(
-                        // Note: due to the applied constraints, start is left for other's message and right for mine
-                        // In design we want a offset of 6.dp compare to the bubble, so start is 22.dp (16 + 6)
-                        start = when {
-                            event.isMine -> 22.dp
-                            timelineRoomInfo.isDm -> 22.dp
-                            else -> 22.dp + BUBBLE_INCOMING_OFFSET
-                        },
-                        end = 16.dp
-                    )
-            )
-        }
     }
 }
 
@@ -868,7 +856,10 @@ private fun MessageEventBubbleContent(
                     traversalIndex = -1f
                 },
                 content = { onContentLayoutChange ->
-                    eventContentView(contentModifier, onContentLayoutChange)
+                    Column {
+                        eventContentView(contentModifier, onContentLayoutChange)
+                        reactionContent?.invoke()
+                    }
                 }
             )
         }
@@ -934,15 +925,18 @@ private fun MessageEventBubbleContent(
             event.content !is TimelineItemAttachmentsContent &&
             contentValidationState.hasError()
 
-    val timestampPosition = if (needsInvalidContentLayout) {
+    val timestampPosition = if (reactionContent != null) {
+        // Keep reactions inside the bubble, below message/caption and above the timestamp.
+        TimestampPosition.Below
+    } else if (needsInvalidContentLayout) {
         // The invalid content view will be displayed in all these cases, independent of the event content
         TimestampPosition.Aligned
     } else {
         when (val content = event.content) {
-            is TimelineItemImageContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
-            is TimelineItemVideoContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Overlay
-            is TimelineItemGalleryContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Below
-            is TimelineItemAttachmentsContent -> if (content.showCaption) TimestampPosition.Aligned else TimestampPosition.Below
+            is TimelineItemImageContent -> if (content.showCaption) TimestampPosition.Below else TimestampPosition.Overlay
+            is TimelineItemVideoContent -> if (content.showCaption) TimestampPosition.Below else TimestampPosition.Overlay
+            is TimelineItemGalleryContent -> TimestampPosition.Below
+            is TimelineItemAttachmentsContent -> TimestampPosition.Below
             is TimelineItemStickerContent -> TimestampPosition.Overlay
             is TimelineItemLocationContent -> {
                 val content = content.ensureActiveLiveLocation()
