@@ -54,6 +54,7 @@ import kotlin.time.DurationUnit
 @Composable
 internal fun TimelineItemRow(
     timelineItem: TimelineItem,
+    mediaUploadProgress: Float? = null,
     timelineMode: Timeline.Mode,
     timelineRoomInfo: TimelineRoomInfo,
     isLastOutgoingMessage: Boolean,
@@ -150,6 +151,7 @@ internal fun TimelineItemRow(
                     else -> {
                         val a11yVoiceMessage = stringResource(CommonStrings.a11y_voice_message)
                         TimelineItemEventRow(
+                            mediaUploadProgress = mediaUploadProgress,
                             modifier = Modifier
                                 .semantics(mergeDescendants = true) {
                                     contentDescription = if (timelineItem.content is TimelineItemVoiceContent) {
