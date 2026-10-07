@@ -137,20 +137,6 @@ android {
             }
         }
 
-        register("syncme") {
-            val release = getByName("release")
-            initWith(release)
-            applicationIdSuffix = ".debug"
-            resValue("string", "app_name", baseAppName)
-            resValue(
-                "string",
-                "login_redirect_scheme",
-                "$oAuthRedirectSchemeBase.debug",
-            )
-            matchingFallbacks += listOf("release")
-            signingConfig = signingConfigs.getByName("debug")
-        }
-
         register("nightly") {
             val release = getByName("release")
             initWith(release)
