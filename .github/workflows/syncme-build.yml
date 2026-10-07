@@ -1,10 +1,10 @@
-name: SyncMe Android APK
+name: SyncMe Lag Test B - No Reactions
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - syncme-main
+      - syncme-lagtest-b-no-reactions
 
 permissions:
   contents: read
@@ -21,7 +21,7 @@ env:
 
 jobs:
   build-debug:
-    name: Build SyncMe universal debug APK
+    name: Lag Test B - Reactions disabled
     runs-on: ubuntu-latest
     steps:
       - name: Free disk space
@@ -53,6 +53,6 @@ jobs:
       - name: Upload SyncMe APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: SyncMe-debug-apk-${{ github.run_number }}-${{ github.sha }}
+          name: SyncMe-LagTest-B-NoReactions-${{ github.run_number }}-${{ github.sha }}
           if-no-files-found: error
           path: app/build/outputs/apk/gplay/debug/*-universal-debug.apk
