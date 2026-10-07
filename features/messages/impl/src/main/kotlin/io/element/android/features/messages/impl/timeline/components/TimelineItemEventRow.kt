@@ -161,6 +161,7 @@ private val BUBBLE_INCOMING_OFFSET = 16.dp
 @Composable
 fun TimelineItemEventRow(
     event: TimelineItem.Event,
+    mediaUploadProgress: Float? = null,
     timelineMode: Timeline.Mode,
     timelineRoomInfo: TimelineRoomInfo,
     timelineProtectionState: TimelineProtectionState,
@@ -317,6 +318,40 @@ fun TimelineItemEventRow(
                 }
             )
         }
+
+        mediaUploadProgress
+            ?.takeIf { it.isFinite() && it < 1f }
+            ?.coerceIn(0f, 1f)
+            ?.let { progress ->
+                val percent = (progress * 100f).roundToInt().coerceIn(0, 100)
+                Column(
+                    modifier = Modifier
+                        .align(if (event.isMine) Alignment.End else Alignment.Start)
+                        .padding(horizontal = 16.dp, top = 4.dp)
+                        .fillMaxWidth(0.55f),
+                ) {
+                    Text(
+                        text = "Uploading $percent%",
+                        style = ElementTheme.typography.fontBodySmMedium,
+                        color = ElementTheme.colors.textSecondary,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 3.dp)
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(ElementTheme.colors.bgSubtleSecondary),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progress.coerceAtLeast(0.01f))
+                                .height(3.dp)
+                                .background(ElementTheme.colors.textPrimary),
+                        )
+                    }
+                }
+            }
 
         // Read receipts / Send state
         TimelineItemReadReceiptView(
