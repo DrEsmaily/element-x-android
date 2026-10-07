@@ -14,7 +14,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -56,7 +55,6 @@ import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.core.asEventId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
-import io.element.android.libraries.matrix.api.room.SendQueueUpdate
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.api.room.roomMembers
 import io.element.android.libraries.matrix.api.timeline.ReceiptType
@@ -152,8 +150,6 @@ class TimelinePresenter(
         val newEventState = remember { mutableStateOf<NewEventState>(NewEventState.None) }
         val messageShieldDialogData: MutableState<MessageShieldData?> = remember { mutableStateOf(null) }
         var sendFailureDialogState by remember { mutableStateOf<SendFailureDialogState>(SendFailureDialogState.Hidden) }
-        val mediaUploadProgress = remember { mutableStateMapOf<io.element.android.libraries.matrix.api.core.TransactionId, Float>() }
-
         // Forces [JumpToUnreadState.Hidden] until the next RoomInfo push. Set after a
         // [TimelineEvent.MarkAllAsRead] await completes so the FAB hides without waiting for
         // the SDK to push a refreshed fully-read marker; the after-await ordering means any
@@ -332,21 +328,6 @@ class TimelinePresenter(
         }
 
         LaunchedEffect(Unit) {
-            room.subscribeToSendQueueUpdates()
-                .onEach { update ->
-                    when (update) {
-                        is SendQueueUpdate.MediaUpload -> {
-                            val progress = update.progress.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f
-                            mediaUploadProgress[update.relatedTo] = progress
-                        }
-                        is SendQueueUpdate.SentEvent -> mediaUploadProgress.remove(update.transactionId)
-                        is SendQueueUpdate.CancelledLocalEvent -> mediaUploadProgress.remove(update.transactionId)
-                        is SendQueueUpdate.SendError -> mediaUploadProgress.remove(update.transactionId)
-                        else -> Unit
-                    }
-                }
-                .launchIn(this)
-
             timelineItemsFactory.timelineItems
                 .onEach { newTimelineItems ->
                     timelineItemIndexer.process(newTimelineItems)
@@ -496,7 +477,6 @@ class TimelinePresenter(
             displayJumpToUnread = displayJumpToUnread,
             jumpToUnread = jumpToUnread.value,
             useNewTimelineEventRenderer = useNewTimelineEventRenderer,
-            mediaUploadProgress = mediaUploadProgress.toMap(),
             eventSink = ::handleEvent,
         )
     }
