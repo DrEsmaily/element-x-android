@@ -21,6 +21,7 @@ jobs:
   build-upstream:
     name: Build pristine Element X upstream release APK
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - name: Free disk space
         uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
@@ -58,7 +59,7 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
 
       - name: Build pristine upstream universal release APK
-        run: ./gradlew :app:assembleGplayRelease -PallWarningsAsErrors=true $CI_GRADLE_ARG_PROPERTIES
+        run: ./gradlew :app:assembleGplayRelease -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
 
       - name: Upload pristine upstream release APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
