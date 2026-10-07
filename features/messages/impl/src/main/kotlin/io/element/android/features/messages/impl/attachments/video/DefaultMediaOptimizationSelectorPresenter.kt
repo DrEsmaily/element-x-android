@@ -22,8 +22,6 @@ import dev.zacsweers.metro.ContributesBinding
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeVideo
 import io.element.android.libraries.di.SessionScope
-import io.element.android.libraries.featureflag.api.FeatureFlagService
-import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.mediaupload.api.MaxUploadSizeProvider
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
 import io.element.android.libraries.mediaupload.api.compressorHelper
@@ -40,7 +38,6 @@ class DefaultMediaOptimizationSelectorPresenter(
     @Assisted private val localMedia: LocalMedia,
     @Assisted private val sendAsFile: Boolean,
     private val maxUploadSizeProvider: MaxUploadSizeProvider,
-    private val featureFlagService: FeatureFlagService,
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
     private val videoCompressionPresetSelector: VideoCompressionPresetSelector,
     mediaExtractorFactory: VideoMetadataExtractor.Factory,
@@ -62,7 +59,7 @@ class DefaultMediaOptimizationSelectorPresenter(
         val displayMediaSelectorViews by produceState<Boolean?>(null) {
             // When sending as a raw file, never show the optimization selector: images skip
             // recompression, while videos use the highest available best-fit preset.
-            value = !sendAsFile && featureFlagService.isFeatureEnabled(FeatureFlags.SelectableMediaQuality)
+            value = !sendAsFile
         }
 
         var displayVideoPresetSelectorDialog by remember { mutableStateOf(false) }
@@ -107,15 +104,20 @@ class DefaultMediaOptimizationSelectorPresenter(
                 size to duration
             }
 
-            val sizeEstimations = VideoCompressionPreset.entries
+            val sizeEstimations = listOf(VideoCompressionPreset.HIGH, VideoCompressionPreset.STANDARD)
                 .map { preset ->
-                    val bitRateAsBytes = preset.compressorHelper().calculateOptimalBitrate(videoDimensions, 30) / 8f
-                    val durationInSeconds = duration.inWholeSeconds.toFloat()
-                    val calculatedSize = (bitRateAsBytes * durationInSeconds * 1.1f).roundToLong() // Adding 10% overhead for safety
+                    val estimatedSize = if (preset == VideoCompressionPreset.HIGH) {
+                        // HIGH is SyncMe's Original path: no video re-encoding.
+                        localMedia.info.fileSize ?: 0L
+                    } else {
+                        val bitRateAsBytes = preset.compressorHelper().calculateOptimalBitrate(videoDimensions, 30) / 8f
+                        val durationInSeconds = duration.inWholeSeconds.toFloat()
+                        (bitRateAsBytes * durationInSeconds * 1.1f).roundToLong()
+                    }
                     VideoUploadEstimation(
                         preset = preset,
-                        sizeInBytes = calculatedSize,
-                        canUpload = calculatedSize <= (maxUploadSize as AsyncData.Success).data
+                        sizeInBytes = estimatedSize,
+                        canUpload = estimatedSize <= (maxUploadSize as AsyncData.Success).data
                     )
                 }
                 .toImmutableList()

@@ -43,6 +43,8 @@ fun CustomReactionBottomSheet(
         is CustomReactionState.Target.Loading -> Unit
         is CustomReactionState.Target.Success -> {
             fun onEmojiSelectedDismiss(emoji: Emoji) {
+                val isAlreadySelected = emoji.unicode in state.selectedEmoji
+                if (!isAlreadySelected && state.selectedEmoji.size >= 3) return
                 sheetState.hide(coroutineScope) {
                     state.eventSink(CustomReactionEvent.DismissCustomReactionSheet)
                     onSelectEmoji(state.target.event.eventOrTransactionId, emoji)

@@ -14,7 +14,6 @@ import dev.zacsweers.metro.SingleIn
 import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.libraries.di.annotations.AppCoroutineScope
 import io.element.android.libraries.matrix.api.accountprovider.AccountProvider
-import io.element.android.libraries.matrix.api.accountprovider.matrixOrgAccountProvider
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,7 +34,7 @@ class AccountProviderDataSource(
     // else matrix.org. The most recently used provider (from history) can override it, see init.
     private val configuredAccountProvider = enterpriseService.accountProviderAllowList()
         .firstOrNull()
-        ?: matrixOrgAccountProvider
+        ?: AccountProvider.Generic("syncme.ir")
 
     private val accountProvider: MutableStateFlow<AccountProvider> = MutableStateFlow(configuredAccountProvider)
 

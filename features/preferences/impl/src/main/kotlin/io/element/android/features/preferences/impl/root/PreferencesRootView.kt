@@ -320,12 +320,7 @@ private fun AppSettingsSection(
                 state.eventSink(PreferencesRootEvent.SetTheme(themeOption))
             }
         )
-        ListItem(
-            content = { Text(stringResource(id = CommonStrings.common_media_upload_quality)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Image())),
-            onClick = onOpenMediaSettings,
-        )
-        ListItem(
+ListItem(
             content = { Text(stringResource(id = CommonStrings.common_screen_lock)) },
             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
             onClick = onOpenLockScreenSettings,
@@ -356,7 +351,7 @@ private fun ColumnScope.GeneralSection(
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Info())),
         onClick = onOpenAbout,
     )
-    // Put developer settings at the end, so nothing bad happens if the user clicks 8 times to enable the entry
+    // SyncMe developer options appear only after five taps on the version.
     AnimatedVisibility(
         visible = state.showDeveloperSettings,
     ) {

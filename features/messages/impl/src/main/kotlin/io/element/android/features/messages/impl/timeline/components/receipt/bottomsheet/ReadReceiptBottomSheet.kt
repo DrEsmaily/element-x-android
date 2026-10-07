@@ -95,6 +95,13 @@ private fun ReadReceiptBottomSheetContent(
             items = state.selectedEvent?.readReceiptState?.receipts.orEmpty()
         ) {
             val userId = UserId(it.avatarData.id)
+            val userReactions = state.selectedEvent
+                ?.reactionsState
+                ?.reactions
+                .orEmpty()
+                .filter { reaction -> reaction.senders.any { sender -> sender.senderId == userId } }
+                .map { reaction -> reaction.displayKey }
+                .take(3)
             MatrixUserRow(
                 modifier = Modifier.clickable { onUserDataClick(userId) },
                 matrixUser = MatrixUser(
@@ -105,7 +112,13 @@ private fun ReadReceiptBottomSheetContent(
                 avatarSize = AvatarSize.ReadReceiptList,
                 trailingContent = {
                     Text(
-                        text = it.formattedDate,
+                        text = buildString {
+                            if (userReactions.isNotEmpty()) {
+                                append(userReactions.joinToString(" "))
+                                append("   ")
+                            }
+                            append(it.formattedDate)
+                        },
                         style = ElementTheme.typography.fontBodySmRegular,
                         color = ElementTheme.colors.textSecondary,
                     )

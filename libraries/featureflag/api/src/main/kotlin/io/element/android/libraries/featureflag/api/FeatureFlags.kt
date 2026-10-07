@@ -9,7 +9,6 @@
 package io.element.android.libraries.featureflag.api
 
 import io.element.android.libraries.core.meta.BuildMeta
-import io.element.android.libraries.core.meta.BuildType
 
 /**
  * To enable or disable a FeatureFlags, change the `defaultValue` value.
@@ -26,7 +25,7 @@ enum class FeatureFlags(
         key = "feature.showBlockedUsersDetails",
         title = "Show blocked users details",
         description = "Show the name and avatar of blocked users in the blocked users list",
-        defaultValue = { false },
+        defaultValue = { true },
         isFinished = false,
     ),
     SyncOnPush(
@@ -51,7 +50,7 @@ enum class FeatureFlags(
         description = "Print logs to logcat in addition to log files. Requires an app restart to take effect." +
             "\n\nWARNING: this will make the logs visible in the device logs and may affect performance. " +
             "It's not intended for daily usage in release builds.",
-        defaultValue = { buildMeta -> buildMeta.buildType != BuildType.RELEASE },
+        defaultValue = { true },
         // False so it's displayed in the developer options screen
         isFinished = false,
     ),
@@ -59,9 +58,9 @@ enum class FeatureFlags(
         key = "feature.selectable_media_quality",
         title = "Select media quality per upload",
         description = "You can select the media quality for each attachment you upload.",
-        defaultValue = { false },
+        defaultValue = { true },
         // False so it's displayed in the developer options screen
-        isFinished = false,
+        isFinished = true,
     ),
     Threads(
         key = "feature.thread_timeline",
@@ -76,7 +75,7 @@ enum class FeatureFlags(
         title = "Multi accounts",
         description = "Allow the application to connect to multiple accounts at the same time." +
             "\n\nWARNING: this feature is EXPERIMENTAL and UNSTABLE.",
-        defaultValue = { false },
+        defaultValue = { true },
         isFinished = false,
     ),
     QrCodeLogin(
@@ -90,7 +89,7 @@ enum class FeatureFlags(
         key = "feature.allow_black_theme",
         title = "Black theme",
         description = "Allow selecting the black appearance theme for battery saving on OLED.",
-        defaultValue = { false },
+        defaultValue = { true },
         isFinished = false,
     ),
     ValidateNetworkWhenSchedulingNotificationFetching(
@@ -106,7 +105,7 @@ enum class FeatureFlags(
         title = "Jump to unread messages",
         description = "Show a button to jump to the read marker, plus a count badge on the scroll-to-bottom button " +
             "when new messages arrive while scrolled away.",
-        defaultValue = { false },
+        defaultValue = { true },
         isFinished = false,
     ),
     SlashCommand(
@@ -151,7 +150,7 @@ enum class FeatureFlags(
         key = "feature.message_search",
         title = "Message search",
         description = "Index messages locally so they can be searched. Only messages received while enabled are indexed.",
-        defaultValue = { false },
+        defaultValue = { true },
         isFinished = false,
     ),
     NewTimelineEventRenderer(

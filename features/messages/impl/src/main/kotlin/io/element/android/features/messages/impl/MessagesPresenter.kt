@@ -270,7 +270,14 @@ class MessagesPresenter(
                     redactEventAction.value = AsyncAction.Uninitialized
                 }
                 is MessagesEvent.ToggleReaction -> {
-                    localCoroutineScope.toggleReaction(event.emoji, event.eventOrTransactionId)
+                    val targetEvent = timelineState.timelineItems
+                        .filterIsInstance<TimelineItem.Event>()
+                        .firstOrNull { it.eventOrTransactionId == event.eventOrTransactionId }
+                    val highlightedKeys = targetEvent?.reactionsState?.highlightedKeys.orEmpty()
+                    val isRemovingExistingReaction = event.emoji in highlightedKeys
+                    if (isRemovingExistingReaction || highlightedKeys.size < 3) {
+                        localCoroutineScope.toggleReaction(event.emoji, event.eventOrTransactionId)
+                    }
                 }
                 is MessagesEvent.InviteDialogDismissed -> {
                     hasDismissedInviteDialog = true

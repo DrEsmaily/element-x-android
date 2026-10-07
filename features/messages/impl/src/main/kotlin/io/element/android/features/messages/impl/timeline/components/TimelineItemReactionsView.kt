@@ -47,7 +47,7 @@ fun TimelineItemReactionsView(
             hideFromAccessibility()
         },
         reactions = reactionsState.reactions,
-        userCanSendReaction = userCanSendReaction,
+        userCanSendReaction = userCanSendReaction && reactionsState.highlightedKeys.size < 3,
         expanded = expanded,
         isOutgoing = isOutgoing,
         onReactionClick = onReactionClick,

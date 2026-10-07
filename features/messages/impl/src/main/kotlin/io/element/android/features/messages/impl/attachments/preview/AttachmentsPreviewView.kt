@@ -575,8 +575,7 @@ internal fun VideoQualitySelectorDialogPreview() {
             selectedPreset = VideoCompressionPreset.STANDARD,
             videoSizeEstimations = persistentListOf(
                 VideoUploadEstimation(VideoCompressionPreset.HIGH, 2_000_000, canUpload = false),
-                VideoUploadEstimation(VideoCompressionPreset.STANDARD, 1_000_000, canUpload = true),
-                VideoUploadEstimation(VideoCompressionPreset.LOW, 500_000, canUpload = true)
+                VideoUploadEstimation(VideoCompressionPreset.STANDARD, 1_000_000, canUpload = true)
             ),
             maxFileUploadSize = 1_500_000,
             onSubmit = {},
@@ -587,25 +586,23 @@ internal fun VideoQualitySelectorDialogPreview() {
 
 @Composable
 fun VideoCompressionPreset.title(): String {
-    return stringResource(
-        when (this) {
-            VideoCompressionPreset.STANDARD -> CommonStrings.common_video_quality_standard
-            VideoCompressionPreset.HIGH -> CommonStrings.common_video_quality_high
-            VideoCompressionPreset.LOW -> CommonStrings.common_video_quality_low
-        }
-    )
+    return when (this) {
+        VideoCompressionPreset.HIGH -> "Original"
+        VideoCompressionPreset.STANDARD -> "Compressed"
+        VideoCompressionPreset.LOW -> "Compressed"
+    }
 }
+
 
 @Composable
 fun VideoCompressionPreset.subtitle(): String {
-    return stringResource(
-        when (this) {
-            VideoCompressionPreset.STANDARD -> CommonStrings.common_video_quality_standard_description
-            VideoCompressionPreset.HIGH -> CommonStrings.common_video_quality_high_description
-            VideoCompressionPreset.LOW -> CommonStrings.common_video_quality_low_description
-        }
-    )
+    return when (this) {
+        VideoCompressionPreset.HIGH -> "Original file, no video re-encoding"
+        VideoCompressionPreset.STANDARD,
+        VideoCompressionPreset.LOW -> "Smaller file, optimized for faster upload"
+    }
 }
+
 
 @Composable
 internal fun GalleryCarouselPill(
