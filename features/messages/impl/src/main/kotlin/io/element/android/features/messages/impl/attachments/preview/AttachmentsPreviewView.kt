@@ -196,6 +196,7 @@ fun AttachmentsPreviewView(
     }
     AttachmentSendStateView(
         sendActionState = state.sendActionState,
+        uploadProgress = state.uploadProgress,
         isApplyingImageEdits = state.isApplyingImageEdits,
         displayImageEditError = state.displayImageEditError,
         onDismissImageEditError = { state.eventSink(AttachmentsPreviewEvent.ClearImageEditError) },
@@ -207,6 +208,7 @@ fun AttachmentsPreviewView(
 @Composable
 private fun AttachmentSendStateView(
     sendActionState: SendActionState,
+    uploadProgress: UploadProgress?,
     isApplyingImageEdits: Boolean,
     displayImageEditError: Boolean,
     onDismissImageEditError: () -> Unit,
@@ -241,7 +243,7 @@ private fun AttachmentSendStateView(
                 }
             }
             is SendActionState.Sending.Uploading -> {
-                val progress = state.uploadProgress
+                val progress = uploadProgress
                 val sizeFormatter = rememberFileSizeFormatter()
                 val percent = progress?.let { (it.fraction * 100f).toInt().coerceIn(0, 100) }
                 ProgressDialog(
