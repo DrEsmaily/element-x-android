@@ -24,13 +24,11 @@ import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeVideo
 import io.element.android.libraries.di.SessionScope
 import io.element.android.libraries.mediaupload.api.MaxUploadSizeProvider
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
-import io.element.android.libraries.mediaupload.api.compressorHelper
 import io.element.android.libraries.mediaviewer.api.local.LocalMedia
 import io.element.android.libraries.preferences.api.store.VideoCompressionPreset
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import timber.log.Timber
-import kotlin.math.roundToLong
 
 @AssistedInject
 class DefaultMediaOptimizationSelectorPresenter(
@@ -39,8 +37,8 @@ class DefaultMediaOptimizationSelectorPresenter(
     @Assisted private val sendAsFile: Boolean,
     private val maxUploadSizeProvider: MaxUploadSizeProvider,
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
-    private val videoCompressionPresetSelector: VideoCompressionPresetSelector,
-    mediaExtractorFactory: VideoMetadataExtractor.Factory,
+    @Suppress("UNUSED_PARAMETER") videoCompressionPresetSelector: VideoCompressionPresetSelector,
+    @Suppress("UNUSED_PARAMETER") mediaExtractorFactory: VideoMetadataExtractor.Factory,
 ) : MediaOptimizationSelectorPresenter {
     @ContributesBinding(SessionScope::class)
     @AssistedFactory
@@ -51,8 +49,6 @@ class DefaultMediaOptimizationSelectorPresenter(
             sendAsFile: Boolean,
         ): DefaultMediaOptimizationSelectorPresenter
     }
-
-    private val mediaExtractor = mediaExtractorFactory.create(localMedia.uri)
 
     @Composable
     override fun present(): MediaOptimizationSelectorState {

@@ -56,6 +56,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.collect
@@ -75,7 +76,7 @@ class AttachmentsPreviewPresenter(
     private val temporaryUriDeleter: TemporaryUriDeleter,
     private val attachmentImageEditor: AttachmentImageEditor,
     private val mediaOptimizationSelectorPresenterFactory: MediaOptimizationSelectorPresenter.Factory,
-    private val videoCompressionPresetSelector: VideoCompressionPresetSelector,
+    @Suppress("UNUSED_PARAMETER") videoCompressionPresetSelector: VideoCompressionPresetSelector,
     private val room: JoinedRoom,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
     private val dispatchers: CoroutineDispatchers,
@@ -547,7 +548,7 @@ class AttachmentsPreviewPresenter(
         val result = runCatchingExceptions {
             coroutineScope {
                 val progressByIndex = mutableMapOf<Int, Float>()
-                val progressJob = launch {
+                val progressJob = launch(start = CoroutineStart.UNDISPATCHED) {
                     room.subscribeToSendQueueUpdates().collect { update ->
                         if (update !is SendQueueUpdate.MediaUpload) return@collect
                         val itemProgress = update.progress.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: return@collect
