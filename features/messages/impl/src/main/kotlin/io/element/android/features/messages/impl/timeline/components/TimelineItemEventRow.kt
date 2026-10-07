@@ -57,7 +57,6 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
@@ -143,7 +142,6 @@ import io.element.android.libraries.ui.common.layout.ContentAvoidingLayoutData
 import io.element.android.libraries.ui.strings.CommonPlurals
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.libraries.ui.utils.a11y.isTalkbackActive
-import io.element.android.libraries.ui.utils.text.detect
 import io.element.android.wysiwyg.link.Link
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
@@ -744,17 +742,8 @@ private fun MessageEventBubbleContent(
         @Suppress("NAME_SHADOWING")
         val content = remember { movableContentOf(content) }
         val originalLayoutDirection = LocalLayoutDirection.current
-        val contentDirection = if (event.content is TimelineItemTextContent) {
-            remember(event.content.body) {
-                when (TextDirection.detect(event.content.body)) {
-                    TextDirection.Ltr, TextDirection.ContentOrLtr -> LayoutDirection.Ltr
-                    TextDirection.Rtl, TextDirection.ContentOrRtl -> LayoutDirection.Rtl
-                    else -> originalLayoutDirection
-                }
-            }
-        } else {
-            originalLayoutDirection
-        }
+        // Lag diagnostic: do not inspect message text direction.
+        val contentDirection = originalLayoutDirection
         when (timestampPosition) {
             TimestampPosition.Overlay ->
                 Box(modifier, contentAlignment = Alignment.Center) {
@@ -866,14 +855,9 @@ private fun MessageEventBubbleContent(
                         // Keep the original lightweight layout for the common case.
                         eventContentView(contentModifier, onContentLayoutChange)
                     } else {
-                        val reactionAlignment = remember(event.content, event.isMine) {
-                            when (val textContent = event.content) {
-                                is TimelineItemTextContent -> when (TextDirection.detect(textContent.body)) {
-                                    TextDirection.Rtl, TextDirection.ContentOrRtl -> Alignment.CenterEnd
-                                    else -> Alignment.CenterStart
-                                }
-                                else -> if (event.isMine) Alignment.CenterEnd else Alignment.CenterStart
-                            }
+                        // Lag diagnostic: no text-direction detection for reaction placement.
+                        val reactionAlignment = remember(event.isMine) {
+                            if (event.isMine) Alignment.CenterEnd else Alignment.CenterStart
                         }
                         Column {
                             eventContentView(contentModifier, onContentLayoutChange)
