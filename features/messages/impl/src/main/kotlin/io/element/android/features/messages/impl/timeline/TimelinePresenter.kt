@@ -14,6 +14,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -52,9 +53,11 @@ import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.core.TransactionId
 import io.element.android.libraries.matrix.api.core.UniqueId
 import io.element.android.libraries.matrix.api.core.asEventId
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import io.element.android.libraries.matrix.api.room.SendQueueUpdate
 import io.element.android.libraries.matrix.api.room.powerlevels.permissionsAsState
 import io.element.android.libraries.matrix.api.room.roomMembers
 import io.element.android.libraries.matrix.api.timeline.ReceiptType
@@ -74,6 +77,7 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
@@ -155,6 +159,44 @@ class TimelinePresenter(
         // the SDK to push a refreshed fully-read marker; the after-await ordering means any
         // RoomInfo update racing the mark-as-read call has already landed and can't undo this.
         val suppressJumpToUnread = remember { mutableStateOf(false) }
+
+        // Subscribe to media upload updates only while this timeline actually contains
+        // a local media event. This keeps the room-open path identical when nothing uploads.
+        val mediaUploadProgress = remember { mutableStateMapOf<TransactionId, Float>() }
+        val activeMediaTransactionIds = remember(timelineItems) {
+            timelineItems.asSequence()
+                .filterIsInstance<TimelineItem.Event>()
+                .filter { it.localSendState is LocalEventSendState.Sending.MediaWithProgress }
+                .mapNotNull { it.transactionId }
+                .toSet()
+        }
+        LaunchedEffect(activeMediaTransactionIds) {
+            mediaUploadProgress.keys
+                .filterNot { it in activeMediaTransactionIds }
+                .forEach(mediaUploadProgress::remove)
+
+            if (activeMediaTransactionIds.isEmpty()) {
+                return@LaunchedEffect
+            }
+
+            room.subscribeToSendQueueUpdates().collect { update ->
+                when (update) {
+                    is SendQueueUpdate.MediaUpload -> {
+                        if (update.relatedTo in activeMediaTransactionIds) {
+                            val progress = update.progress
+                                .takeIf { it.isFinite() }
+                                ?.coerceIn(0f, 1f)
+                                ?: return@collect
+                            mediaUploadProgress[update.relatedTo] = progress
+                        }
+                    }
+                    is SendQueueUpdate.SentEvent -> mediaUploadProgress.remove(update.transactionId)
+                    is SendQueueUpdate.CancelledLocalEvent -> mediaUploadProgress.remove(update.transactionId)
+                    is SendQueueUpdate.SendError -> mediaUploadProgress.remove(update.transactionId)
+                    else -> Unit
+                }
+            }
+        }
 
         val resolveVerifiedUserSendFailureState = resolveVerifiedUserSendFailurePresenter.present()
         val isLive by remember {
@@ -477,6 +519,7 @@ class TimelinePresenter(
             displayJumpToUnread = displayJumpToUnread,
             jumpToUnread = jumpToUnread.value,
             useNewTimelineEventRenderer = useNewTimelineEventRenderer,
+            mediaUploadProgress = mediaUploadProgress.toMap(),
             eventSink = ::handleEvent,
         )
     }

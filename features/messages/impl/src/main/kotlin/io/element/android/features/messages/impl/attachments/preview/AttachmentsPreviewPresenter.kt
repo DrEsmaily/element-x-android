@@ -540,10 +540,16 @@ class AttachmentsPreviewPresenter(
         inReplyToEventId: EventId?,
         onUploadProgress: (UploadProgress?) -> Unit,
     ) {
-        val fileSizes = mediaUploadInfos
-            .flatMap { it.allFiles() }
-            .map { it.length().coerceAtLeast(0L) }
-        val totalBytes = fileSizes.sum().coerceAtLeast(1L)
+        val fileSizes = mediaUploadInfos.map { uploadInfo ->
+            when (uploadInfo) {
+                is MediaUploadInfo.Image -> uploadInfo.imageInfo.size
+                is MediaUploadInfo.Video -> uploadInfo.videoInfo.size
+                is MediaUploadInfo.Audio -> uploadInfo.audioInfo.size
+                is MediaUploadInfo.VoiceMessage -> uploadInfo.audioInfo.size
+                is MediaUploadInfo.AnyFile -> uploadInfo.fileInfo.size
+            }?.takeIf { it > 0L } ?: uploadInfo.file.length().takeIf { it > 0L } ?: 0L
+        }
+        val totalBytes = fileSizes.sum().takeIf { it > 0L } ?: 1L
 
         val result = runCatchingExceptions {
             coroutineScope {

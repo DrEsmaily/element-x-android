@@ -213,6 +213,9 @@ fun TimelineView(
                             isLastOutgoingMessage = state.isLastOutgoingMessage(timelineItem.identifier()),
                             focusedEventId = state.focusedEventId,
                             displayThreadSummaries = state.displayThreadSummaries,
+                            mediaUploadProgress = (timelineItem as? TimelineItem.Event)
+                                ?.transactionId
+                                ?.let(state.mediaUploadProgress::get),
                             onUserDataClick = onUserDataClick,
                             onLinkClick = onLinkClick,
                             onLinkLongClick = ::onLinkLongClick,

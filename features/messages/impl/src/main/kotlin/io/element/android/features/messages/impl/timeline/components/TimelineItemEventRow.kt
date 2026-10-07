@@ -86,6 +86,7 @@ import io.element.android.features.messages.impl.timeline.model.event.TimelineIt
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemPollContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemStickerContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemTextContent
+import io.element.android.features.messages.impl.timeline.model.event.TimelineItemEventContentWithAttachment
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVideoContent
 import io.element.android.features.messages.impl.timeline.model.event.TimelineItemVoiceContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemImageContent
@@ -180,6 +181,7 @@ fun TimelineItemEventRow(
     onReadReceiptClick: (event: TimelineItem.Event) -> Unit,
     onSwipeToReply: () -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
+    mediaUploadProgress: Float? = null,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit = { contentModifier, onContentLayoutChange ->
         // Only pass down a custom clickable lambda if the content can be clicked separately
@@ -319,13 +321,17 @@ fun TimelineItemEventRow(
             )
         }
 
-        (event.localSendState as? LocalEventSendState.Sending.MediaWithProgress)
-            ?.takeIf { it.total > 0L }
-            ?.let { upload ->
-                val fraction = (upload.progress.toDouble() / upload.total.toDouble()).coerceIn(0.0, 1.0)
-                val percent = (fraction * 100.0).roundToInt().coerceIn(0, 100)
-                val uploadedSize = formatUploadBytes(upload.progress)
-                val totalSize = formatUploadBytes(upload.total)
+        mediaUploadProgress
+            ?.takeIf { it.isFinite() }
+            ?.coerceIn(0f, 1f)
+            ?.let { fraction ->
+                val percent = (fraction * 100f).roundToInt().coerceIn(0, 100)
+                val totalBytes = (event.content as? TimelineItemEventContentWithAttachment)
+                    ?.fileSize
+                    ?.takeIf { it > 0L }
+                val uploadedBytes = totalBytes?.let {
+                    (it.toDouble() * fraction.toDouble()).toLong().coerceIn(0L, it)
+                }
                 Column(
                     modifier = Modifier
                         .align(if (event.isMine) Alignment.End else Alignment.Start)
@@ -333,7 +339,11 @@ fun TimelineItemEventRow(
                         .fillMaxWidth(0.72f),
                 ) {
                     Text(
-                        text = "Uploading $percent%  ·  $uploadedSize / $totalSize",
+                        text = if (totalBytes != null && uploadedBytes != null) {
+                            "Uploading $percent%  ·  ${formatUploadBytes(uploadedBytes)} / ${formatUploadBytes(totalBytes)}"
+                        } else {
+                            "Uploading $percent%"
+                        },
                         style = ElementTheme.typography.fontBodySmMedium,
                         color = ElementTheme.colors.textSecondary,
                     )
@@ -347,7 +357,7 @@ fun TimelineItemEventRow(
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(fraction.toFloat().coerceAtLeast(0.01f))
+                                .fillMaxWidth(fraction.coerceAtLeast(0.01f))
                                 .height(3.dp)
                                 .background(ElementTheme.colors.textPrimary),
                         )
@@ -869,19 +879,20 @@ private fun MessageEventBubbleContent(
                         val reactionAlignment = remember(event.content, event.isMine) {
                             when (val textContent = event.content) {
                                 is TimelineItemTextContent -> when (TextDirection.detect(textContent.body)) {
-                                    TextDirection.Rtl, TextDirection.ContentOrRtl -> Alignment.CenterEnd
-                                    else -> Alignment.CenterStart
+                                    TextDirection.Rtl, TextDirection.ContentOrRtl -> Alignment.End
+                                    else -> Alignment.Start
                                 }
-                                else -> if (event.isMine) Alignment.CenterEnd else Alignment.CenterStart
+                                else -> if (event.isMine) Alignment.End else Alignment.Start
                             }
                         }
                         Column {
                             eventContentView(contentModifier, onContentLayoutChange)
                             CompositionLocalProvider(LocalLayoutDirection provides baseLayoutDirection) {
                                 Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = reactionAlignment,
+                                    modifier = Modifier.align(reactionAlignment),
                                 ) {
+                                    // TimelineItemReactionsLayout measures to its actual row width
+                                    // and wraps only when the bubble's max width is reached.
                                     reactionContent.invoke()
                                 }
                             }
