@@ -117,6 +117,7 @@ import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.timeline.item.EmbeddedEventInfo
 import io.element.android.libraries.matrix.api.timeline.item.ThreadSummary
 import io.element.android.libraries.matrix.api.timeline.item.event.EventOrTransactionId
+import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageContent
 import io.element.android.libraries.matrix.api.timeline.item.event.MessageShield
 import io.element.android.libraries.matrix.api.timeline.item.event.ProfileDetails
@@ -161,7 +162,6 @@ private val BUBBLE_INCOMING_OFFSET = 16.dp
 @Composable
 fun TimelineItemEventRow(
     event: TimelineItem.Event,
-    mediaUploadProgress: Float? = null,
     timelineMode: Timeline.Mode,
     timelineRoomInfo: TimelineRoomInfo,
     timelineProtectionState: TimelineProtectionState,
@@ -319,19 +319,21 @@ fun TimelineItemEventRow(
             )
         }
 
-        mediaUploadProgress
-            ?.takeIf { it.isFinite() && it < 1f }
-            ?.coerceIn(0f, 1f)
-            ?.let { progress ->
-                val percent = (progress * 100f).roundToInt().coerceIn(0, 100)
+        (event.localSendState as? LocalEventSendState.Sending.MediaWithProgress)
+            ?.takeIf { it.total > 0L }
+            ?.let { upload ->
+                val fraction = (upload.progress.toDouble() / upload.total.toDouble()).coerceIn(0.0, 1.0)
+                val percent = (fraction * 100.0).roundToInt().coerceIn(0, 100)
+                val uploadedSize = formatUploadBytes(upload.progress)
+                val totalSize = formatUploadBytes(upload.total)
                 Column(
                     modifier = Modifier
                         .align(if (event.isMine) Alignment.End else Alignment.Start)
                         .padding(start = 16.dp, end = 16.dp, top = 4.dp)
-                        .fillMaxWidth(0.55f),
+                        .fillMaxWidth(0.72f),
                 ) {
                     Text(
-                        text = "Uploading $percent%",
+                        text = "Uploading $percent%  ·  $uploadedSize / $totalSize",
                         style = ElementTheme.typography.fontBodySmMedium,
                         color = ElementTheme.colors.textSecondary,
                     )
@@ -345,7 +347,7 @@ fun TimelineItemEventRow(
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(progress.coerceAtLeast(0.01f))
+                                .fillMaxWidth(fraction.toFloat().coerceAtLeast(0.01f))
                                 .height(3.dp)
                                 .background(ElementTheme.colors.textPrimary),
                         )
@@ -988,6 +990,15 @@ private fun MessageEventBubbleContent(
         canShrinkContent = event.content is TimelineItemVoiceContent,
         modifier = bubbleModifier,
     )
+}
+
+private fun formatUploadBytes(bytes: Long): String {
+    if (bytes < 1024L) return "$bytes B"
+    val kb = bytes / 1024.0
+    if (kb < 1024.0) return String.format("%.1f KB", kb)
+    val mb = kb / 1024.0
+    if (mb < 1024.0) return String.format("%.1f MB", mb)
+    return String.format("%.2f GB", mb / 1024.0)
 }
 
 @PreviewsDayNight
