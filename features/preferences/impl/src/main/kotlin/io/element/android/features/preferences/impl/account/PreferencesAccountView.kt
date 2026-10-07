@@ -126,13 +126,7 @@ private fun ColumnScope.GeneralSection(
         onClick = onModerationAndSafetyClick,
     )
 
-    if (state.canReportBug) {
-        ListItem(
-            content = { Text(stringResource(id = CommonStrings.common_report_a_problem)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.ChatProblem())),
-            onClick = onOpenRageShake,
-        )
-    }
+    // SyncMe intentionally hides the upstream "Report a problem" entry.
     HorizontalDivider()
     ListItem(
         content = { Text(stringResource(id = CommonStrings.action_signout)) },
