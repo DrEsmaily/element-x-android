@@ -101,6 +101,7 @@ import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.animateScrollToItemCenter
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.testtags.TestTag
 import io.element.android.libraries.testtags.TestTags
@@ -207,9 +208,15 @@ fun TimelineView(
                     ) { timelineItem ->
                         TimelineItemRow(
                             timelineItem = timelineItem,
-                            mediaUploadProgress = (timelineItem as? TimelineItem.Event)
-                                ?.transactionId
-                                ?.let(state.mediaUploadProgress::get),
+                            mediaUploadProgress = ((timelineItem as? TimelineItem.Event)
+                                ?.localSendState as? LocalEventSendState.Sending.MediaWithProgress)
+                                ?.let { sendState ->
+                                    if (sendState.total > 0L) {
+                                        sendState.progress.toFloat() / sendState.total.toFloat()
+                                    } else {
+                                        null
+                                    }
+                                },
                             timelineMode = state.timelineMode,
                             timelineRoomInfo = state.timelineRoomInfo,
                             timelineProtectionState = timelineProtectionState,
