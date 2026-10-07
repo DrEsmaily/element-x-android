@@ -48,7 +48,7 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
 
       - name: Build optimized SyncMe APK
-        run: ./gradlew :app:assembleGplaySyncme -x lintVitalAnalyzeRelease -x lintVitalReportRelease -x lintVitalRelease -x lintVitalAnalyzeGplaySyncme -x lintVitalReportGplaySyncme -x lintVitalGplaySyncme -PallWarningsAsErrors=true $CI_GRADLE_ARG_PROPERTIES
+        run: ./gradlew :app:assembleGplaySyncme -x :app:lintVitalAnalyzeGplaySyncme -x :app:lintVitalReportGplaySyncme -x :app:lintVitalGplaySyncme -PallWarningsAsErrors=true $CI_GRADLE_ARG_PROPERTIES
 
       - name: Upload SyncMe APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
