@@ -105,7 +105,7 @@ private fun ColumnScope.OtherSettingsSection(
         ListItem(
             content = { Text(stringResource(id = CommonStrings.common_encryption)) },
             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Key())),
-            trailingContent = ListItemContent.Badge.takeIf { state.showSecureBackupBadge },
+            // SyncMe keeps Encryption as a normal settings row without a persistent red dot.
             onClick = onSecureBackupClick,
         )
     }
