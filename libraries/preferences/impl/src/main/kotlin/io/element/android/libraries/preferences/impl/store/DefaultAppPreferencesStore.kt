@@ -94,7 +94,8 @@ class DefaultAppPreferencesStore(
 
     override fun getThemeFlow(): Flow<String?> {
         return store.data.map { prefs ->
-            prefs[themeKey]
+            // SyncMe defaults to the true-black OLED theme until the user chooses another one.
+            prefs[themeKey] ?: "Black"
         }
     }
 
