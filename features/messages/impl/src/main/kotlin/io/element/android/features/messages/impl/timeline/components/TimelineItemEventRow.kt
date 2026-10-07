@@ -703,6 +703,8 @@ private fun MessageEventBubbleContent(
     bubbleModifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
+    val baseLayoutDirection = LocalLayoutDirection.current
+
     // Long clicks are not not automatically propagated from a `clickable`
     // to its `combinedClickable` parent so we do it manually
     fun onTimestampLongClick() = onMessageLongClick()
@@ -741,6 +743,18 @@ private fun MessageEventBubbleContent(
     ) {
         @Suppress("NAME_SHADOWING")
         val content = remember { movableContentOf(content) }
+        val originalLayoutDirection = LocalLayoutDirection.current
+        val contentDirection = if (event.content is TimelineItemTextContent) {
+            remember(event.content.body) {
+                when (TextDirection.detect(event.content.body)) {
+                    TextDirection.Ltr, TextDirection.ContentOrLtr -> LayoutDirection.Ltr
+                    TextDirection.Rtl, TextDirection.ContentOrRtl -> LayoutDirection.Rtl
+                    else -> originalLayoutDirection
+                }
+            }
+        } else {
+            originalLayoutDirection
+        }
         when (timestampPosition) {
             TimestampPosition.Overlay ->
                 Box(modifier, contentAlignment = Alignment.Center) {
@@ -758,20 +772,6 @@ private fun MessageEventBubbleContent(
                     )
                 }
             TimestampPosition.Aligned -> @Composable {
-                val originalLayoutDirection = LocalLayoutDirection.current
-                // Detect if the direction of the text content (if any) does not match the layout direction, to place the content and timestamp correctly
-                val contentDirection = if (event.content is TimelineItemTextContent) {
-                    remember(event.content.body) {
-                        when (TextDirection.detect(event.content.body)) {
-                            TextDirection.Ltr, TextDirection.ContentOrLtr -> LayoutDirection.Ltr
-                            TextDirection.Rtl, TextDirection.ContentOrRtl -> LayoutDirection.Rtl
-                            else -> originalLayoutDirection
-                        }
-                    }
-                } else {
-                    originalLayoutDirection
-                }
-
                 CompositionLocalProvider(LocalLayoutDirection provides contentDirection) {
                     ContentAvoidingLayout(
                         modifier = modifier,
@@ -797,14 +797,18 @@ private fun MessageEventBubbleContent(
             }
             TimestampPosition.Below ->
                 Column(modifier) {
-                    content {}
-                    TimelineEventTimestampView(
-                        event = event,
-                        eventSink = eventSink,
-                        modifier = Modifier
-                            .align(Alignment.End)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    CompositionLocalProvider(LocalLayoutDirection provides contentDirection) {
+                        content {}
+                    }
+                    CompositionLocalProvider(LocalLayoutDirection provides originalLayoutDirection) {
+                        TimelineEventTimestampView(
+                            event = event,
+                            eventSink = eventSink,
+                            modifier = Modifier
+                                .align(Alignment.End)
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             TimestampPosition.Hidden -> Box(modifier) { content {} }
         }
@@ -862,20 +866,24 @@ private fun MessageEventBubbleContent(
                         // Keep the original lightweight layout for the common case.
                         eventContentView(contentModifier, onContentLayoutChange)
                     } else {
-                        val reactionAlignment = when (val textContent = event.content) {
-                            is TimelineItemTextContent -> when (TextDirection.detect(textContent.body)) {
-                                TextDirection.Rtl, TextDirection.ContentOrRtl -> Alignment.CenterEnd
-                                else -> Alignment.CenterStart
+                        val reactionAlignment = remember(event.content, event.isMine) {
+                            when (val textContent = event.content) {
+                                is TimelineItemTextContent -> when (TextDirection.detect(textContent.body)) {
+                                    TextDirection.Rtl, TextDirection.ContentOrRtl -> Alignment.CenterEnd
+                                    else -> Alignment.CenterStart
+                                }
+                                else -> if (event.isMine) Alignment.CenterEnd else Alignment.CenterStart
                             }
-                            else -> if (event.isMine) Alignment.CenterEnd else Alignment.CenterStart
                         }
                         Column {
                             eventContentView(contentModifier, onContentLayoutChange)
-                            Box(
-                                modifier = Modifier.fillMaxWidth(),
-                                contentAlignment = reactionAlignment,
-                            ) {
-                                reactionContent.invoke()
+                            CompositionLocalProvider(LocalLayoutDirection provides baseLayoutDirection) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = reactionAlignment,
+                                ) {
+                                    reactionContent.invoke()
+                                }
                             }
                         }
                     }

@@ -242,12 +242,25 @@ private fun AttachmentSendStateView(
                 }
             }
             is SendActionState.Sending.Uploading -> {
+                val progress = state.uploadProgress
+                val sizeFormatter = rememberFileSizeFormatter()
+                val percent = progress?.let { (it.fraction * 100f).toInt().coerceIn(0, 100) }
                 ProgressDialog(
-                    type = ProgressDialogType.Indeterminate,
-                    text = stringResource(id = CommonStrings.common_sending),
+                    type = progress?.let { ProgressDialogType.Determinate(it.fraction.coerceIn(0f, 1f)) }
+                        ?: ProgressDialogType.Indeterminate,
+                    text = percent?.let { "Uploading $it%" } ?: stringResource(id = CommonStrings.common_sending),
                     showCancelButton = true,
                     onDismissRequest = onDismissClick,
-                )
+                ) {
+                    if (progress != null) {
+                        Text(
+                            modifier = Modifier.padding(top = 8.dp),
+                            text = "${sizeFormatter.format(progress.uploadedBytes, true)} / ${sizeFormatter.format(progress.totalBytes, true)}",
+                            style = ElementTheme.typography.fontBodySmRegular,
+                            color = ElementTheme.colors.textSecondary,
+                        )
+                    }
+                }
             }
             is SendActionState.Failure -> {
                 RetryDialog(

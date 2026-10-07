@@ -57,9 +57,8 @@ class DefaultMediaOptimizationSelectorPresenter(
     @Composable
     override fun present(): MediaOptimizationSelectorState {
         val displayMediaSelectorViews by produceState<Boolean?>(null) {
-            // When sending as a raw file, never show the optimization selector: images skip
-            // recompression, while videos use the highest available best-fit preset.
-            value = !sendAsFile
+            // SyncMe exposes no video quality choice: video is always sent as Original.
+            value = !sendAsFile && !localMedia.info.mimeType.isMimeTypeVideo()
         }
 
         var displayVideoPresetSelectorDialog by remember { mutableStateOf(false) }
@@ -89,46 +88,14 @@ class DefaultMediaOptimizationSelectorPresenter(
                 return@produceState
             }
 
-            val (videoDimensions, duration) = mediaExtractor.use {
-                val size = it.getSize()
-                    .getOrElse { exception ->
-                        value = AsyncData.Failure(exception)
-                        return@produceState
-                    }
-
-                val duration = it.getDuration()
-                    .getOrElse { exception ->
-                        value = AsyncData.Failure(exception)
-                        return@produceState
-                    }
-                size to duration
-            }
-
-            // SyncMe always sends video in Original quality.
-            val sizeEstimations = listOf(VideoCompressionPreset.HIGH)
-                .map { preset ->
-                    val originalSize = localMedia.info.fileSize ?: 0L
-                    val estimatedSize = if (preset == VideoCompressionPreset.HIGH) {
-                        // HIGH is SyncMe's Original path: no video re-encoding.
-                        originalSize
-                    } else {
-                        val bitRateAsBytes = preset.compressorHelper().calculateOptimalBitrate(videoDimensions, 30) / 8f
-                        val durationInSeconds = duration.inWholeSeconds.toFloat()
-                        val rawEstimate = (bitRateAsBytes * durationInSeconds * 1.1f).roundToLong()
-                        // The encoder caps video bitrate to the source bitrate; never present a
-                        // "compressed" estimate that is larger than the source file.
-                        if (originalSize > 0L) rawEstimate.coerceAtMost(originalSize) else rawEstimate
-                    }
-                    VideoUploadEstimation(
-                        preset = preset,
-                        sizeInBytes = estimatedSize,
-                        canUpload = estimatedSize <= (maxUploadSize as AsyncData.Success).data
-                    )
-                }
-                .toImmutableList()
-                .also { sizes ->
-                    Timber.d(sizes.joinToString("\n") { "Calculated size for ${it.preset}: ${it.sizeInBytes} MB. Max upload size: $maxUploadSize" })
-                }
+            val originalSize = localMedia.info.fileSize ?: 0L
+            val sizeEstimations = listOf(
+                VideoUploadEstimation(
+                    preset = VideoCompressionPreset.HIGH,
+                    sizeInBytes = originalSize,
+                    canUpload = originalSize <= (maxUploadSize as AsyncData.Success).data,
+                )
+            ).toImmutableList()
 
             value = AsyncData.Success(sizeEstimations)
         }
@@ -137,20 +104,10 @@ class DefaultMediaOptimizationSelectorPresenter(
         var selectedVideoOptimizationPreset by remember { mutableStateOf<AsyncData<VideoCompressionPreset>>(AsyncData.Loading()) }
 
         LaunchedEffect(videoSizeEstimations.dataOrNull()) {
-            if (sendAsFile) {
-                // Send-as-file path: pin to no image compression, and pick the highest-quality
-                // video preset that still fits the upload limit (we have no true "do not re-encode
-                // video" path in the pre-processor right now).
-                selectedImageOptimization = AsyncData.Success(false)
-                selectedVideoOptimizationPreset = videoCompressionPresetSelector.selectBestVideoPreset(
-                    expectedVideoPreset = VideoCompressionPreset.HIGH,
-                    videoSizeEstimations = videoSizeEstimations,
-                )
-                return@LaunchedEffect
-            }
             val mediaOptimizationConfig = mediaOptimizationConfigProvider.get()
-            selectedImageOptimization = AsyncData.Success(mediaOptimizationConfig.compressImages)
-            // SyncMe video uploads are always Original (HIGH = no re-encode).
+            selectedImageOptimization = AsyncData.Success(
+                if (sendAsFile) false else mediaOptimizationConfig.compressImages
+            )
             selectedVideoOptimizationPreset = AsyncData.Success(VideoCompressionPreset.HIGH)
         }
 
@@ -160,22 +117,7 @@ class DefaultMediaOptimizationSelectorPresenter(
                     selectedImageOptimization = AsyncData.Success(event.enabled)
                 }
                 is MediaOptimizationSelectorEvent.SelectVideoPreset -> {
-                    val estimations = videoSizeEstimations.dataOrNull()
-                    if (estimations != null) {
-                        val preset = estimations.find { it.preset == event.preset }
-                        if (preset == null) {
-                            Timber.e("Selected video preset ${event.preset} is not available in the estimations")
-                            return
-                        }
-                        if (!preset.canUpload) {
-                            Timber.w("Selected video preset ${event.preset} exceeds max upload size")
-                            return
-                        }
-                    } else {
-                        Timber.e("Video size estimations are not available")
-                        return
-                    }
-                    selectedVideoOptimizationPreset = AsyncData.Success(event.preset)
+                    selectedVideoOptimizationPreset = AsyncData.Success(VideoCompressionPreset.HIGH)
                     displayVideoPresetSelectorDialog = false
                 }
                 is MediaOptimizationSelectorEvent.OpenVideoPresetSelectorDialog -> {

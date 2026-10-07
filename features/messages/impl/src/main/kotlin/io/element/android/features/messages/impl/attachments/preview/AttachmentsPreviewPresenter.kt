@@ -41,6 +41,8 @@ import io.element.android.libraries.core.mimetype.MimeTypes.isMimeTypeVideo
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.permalink.PermalinkBuilder
+import io.element.android.libraries.matrix.api.room.JoinedRoom
+import io.element.android.libraries.matrix.api.room.SendQueueUpdate
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfig
 import io.element.android.libraries.mediaupload.api.MediaOptimizationConfigProvider
@@ -55,6 +57,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -72,6 +76,7 @@ class AttachmentsPreviewPresenter(
     private val attachmentImageEditor: AttachmentImageEditor,
     private val mediaOptimizationSelectorPresenterFactory: MediaOptimizationSelectorPresenter.Factory,
     private val videoCompressionPresetSelector: VideoCompressionPresetSelector,
+    private val room: JoinedRoom,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
     private val dispatchers: CoroutineDispatchers,
     private val mediaOptimizationConfigProvider: MediaOptimizationConfigProvider,
@@ -151,6 +156,7 @@ class AttachmentsPreviewPresenter(
         val observableSendState = snapshotFlow { sendActionState.value }
 
         var displayFileTooLargeError by remember { mutableStateOf(false) }
+        var uploadProgress by remember { mutableStateOf<UploadProgress?>(null) }
 
         LaunchedEffect(
             mediaOptimizationSelectorStates,
@@ -230,12 +236,18 @@ class AttachmentsPreviewPresenter(
                 is AttachmentsPreviewEvent.SendAttachment -> {
                     ongoingSendAttachmentJob.value = coroutineScope.launch {
                         if (preprocessMediaJob?.isActive != true && sendActionState.value !is SendActionState.Sending.ReadyToUpload) {
-                            val configs = mediaOptimizationSelectorStates.map {
+                            val configs = mediaOptimizationSelectorStates.mapIndexed { index, selectorState ->
+                                val attachment = editedAttachments[index] as Attachment.Media
+                                val isVideo = attachment.localMedia.info.mimeType.isMimeTypeVideo()
                                 MediaOptimizationConfig(
-                                    compressImages = it.isImageOptimizationEnabled
+                                    compressImages = selectorState.isImageOptimizationEnabled
                                         ?: mediaOptimizationConfigProvider.get().compressImages,
-                                    videoCompressionPreset = it.selectedVideoPreset
-                                        ?: mediaOptimizationConfigProvider.get().videoCompressionPreset,
+                                    videoCompressionPreset = if (isVideo) {
+                                        VideoCompressionPreset.HIGH
+                                    } else {
+                                        selectorState.selectedVideoPreset
+                                            ?: mediaOptimizationConfigProvider.get().videoCompressionPreset
+                                    },
                                 )
                             }
                             preprocessMediaJob = coroutineScope.launch(dispatchers.io) {
@@ -270,6 +282,7 @@ class AttachmentsPreviewPresenter(
                                 caption = caption,
                                 sendActionState = sendActionState,
                                 inReplyToEventId = inReplyToEventId,
+                                onUploadProgress = { uploadProgress = it },
                             )
 
                             // Clean up the pre-processed media after it's been sent
@@ -425,6 +438,7 @@ class AttachmentsPreviewPresenter(
             displayFileTooLargeError = displayFileTooLargeError,
             currentIndex = currentIndex,
             eventSink = ::handleEvent,
+            uploadProgress = uploadProgress,
         )
     }
 
@@ -432,26 +446,21 @@ class AttachmentsPreviewPresenter(
         mediaAttachment: Attachment.Media,
         mediaOptimizationSelectorState: MediaOptimizationSelectorState,
     ): MediaOptimizationConfig {
-        return if (mediaAttachment.sendAsFile) {
-            // If we're sending the media as a file, we can skip image compression and we should select the highest video compression preset that still fits
-            // the upload limit (if the estimations are available)
-            val videoCompressionPreset = videoCompressionPresetSelector.selectBestVideoPreset(
-                expectedVideoPreset = VideoCompressionPreset.HIGH,
-                videoSizeEstimations = mediaOptimizationSelectorState.videoSizeEstimations,
-            ).dataOrNull() ?: VideoCompressionPreset.HIGH
-
-            MediaOptimizationConfig(
-                compressImages = false,
-                videoCompressionPreset = videoCompressionPreset,
-            )
-        } else {
-            MediaOptimizationConfig(
-                compressImages = mediaOptimizationSelectorState.isImageOptimizationEnabled
-                    ?: mediaOptimizationConfigProvider.get().compressImages,
-                videoCompressionPreset = mediaOptimizationSelectorState.selectedVideoPreset
-                    ?: mediaOptimizationConfigProvider.get().videoCompressionPreset,
-            )
-        }
+        val isVideo = mediaAttachment.localMedia.info.mimeType.isMimeTypeVideo()
+        return MediaOptimizationConfig(
+            compressImages = if (mediaAttachment.sendAsFile) {
+                false
+            } else {
+                mediaOptimizationSelectorState.isImageOptimizationEnabled
+                    ?: mediaOptimizationConfigProvider.get().compressImages
+            },
+            videoCompressionPreset = if (isVideo) {
+                VideoCompressionPreset.HIGH
+            } else {
+                mediaOptimizationSelectorState.selectedVideoPreset
+                    ?: mediaOptimizationConfigProvider.get().videoCompressionPreset
+            },
+        )
     }
 
     private suspend fun preProcessAttachments(
@@ -528,36 +537,80 @@ class AttachmentsPreviewPresenter(
         caption: String?,
         sendActionState: MutableState<SendActionState>,
         inReplyToEventId: EventId?,
-    ) = runCatchingExceptions {
-        if (mediaUploadInfos.size == 1) {
-            sendActionState.value = SendActionState.Sending.Uploading(mediaUploadInfos)
-            mediaSender.sendPreProcessedMedia(
-                mediaUploadInfo = mediaUploadInfos.first(),
-                caption = caption,
-                formattedCaption = null,
-                inReplyToEventId = inReplyToEventId,
-            ).getOrThrow()
-        } else {
-            mediaSender.sendGallery(
-                mediaUploadInfos = mediaUploadInfos,
-                caption = caption,
-                formattedCaption = null,
-                inReplyToEventId = inReplyToEventId,
-            ).getOrThrow()
-        }
-    }.fold(
-        onSuccess = {
-            mediaUploadInfos.forEach { cleanUp(it) }
-            sendActionState.value = SendActionState.Done
-            onDoneListener()
-        },
-        onFailure = { error ->
-            Timber.e(error, "Failed to send attachment")
-            if (error is CancellationException) {
-                throw error
-            } else {
-                sendActionState.value = SendActionState.Failure(error, mediaUploadInfos)
+        onUploadProgress: (UploadProgress?) -> Unit,
+    ) {
+        val fileSizes = mediaUploadInfos
+            .flatMap { it.allFiles() }
+            .map { it.length().coerceAtLeast(0L) }
+        val totalBytes = fileSizes.sum().coerceAtLeast(1L)
+
+        val result = runCatchingExceptions {
+            coroutineScope {
+                val progressByIndex = mutableMapOf<Int, Float>()
+                val progressJob = launch {
+                    room.subscribeToSendQueueUpdates().collect { update ->
+                        if (update !is SendQueueUpdate.MediaUpload) return@collect
+                        val itemProgress = update.progress.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: return@collect
+                        val index = update.index.toInt()
+                        val uploadedBytes = if (index in fileSizes.indices) {
+                            repeat(index) { completedIndex ->
+                                progressByIndex[completedIndex] = 1f
+                            }
+                            progressByIndex[index] = itemProgress
+                            fileSizes.mapIndexed { fileIndex, size ->
+                                (size.toDouble() * (progressByIndex[fileIndex] ?: 0f)).toLong()
+                            }.sum().coerceIn(0L, totalBytes)
+                        } else {
+                            (totalBytes.toDouble() * itemProgress).toLong().coerceIn(0L, totalBytes)
+                        }
+                        onUploadProgress(
+                            UploadProgress(
+                                fraction = (uploadedBytes.toDouble() / totalBytes.toDouble()).toFloat().coerceIn(0f, 1f),
+                                uploadedBytes = uploadedBytes,
+                                totalBytes = totalBytes,
+                            )
+                        )
+                    }
+                }
+                try {
+                    sendActionState.value = SendActionState.Sending.Uploading(mediaUploadInfos)
+                    if (mediaUploadInfos.size == 1) {
+                        mediaSender.sendPreProcessedMedia(
+                            mediaUploadInfo = mediaUploadInfos.first(),
+                            caption = caption,
+                            formattedCaption = null,
+                            inReplyToEventId = inReplyToEventId,
+                        ).getOrThrow()
+                    } else {
+                        mediaSender.sendGallery(
+                            mediaUploadInfos = mediaUploadInfos,
+                            caption = caption,
+                            formattedCaption = null,
+                            inReplyToEventId = inReplyToEventId,
+                        ).getOrThrow()
+                    }
+                } finally {
+                    progressJob.cancel()
+                }
             }
         }
-    )
+
+        result.fold(
+            onSuccess = {
+                onUploadProgress(null)
+                mediaUploadInfos.forEach { cleanUp(it) }
+                sendActionState.value = SendActionState.Done
+                onDoneListener()
+            },
+            onFailure = { error ->
+                onUploadProgress(null)
+                Timber.e(error, "Failed to send attachment")
+                if (error is CancellationException) {
+                    throw error
+                } else {
+                    sendActionState.value = SendActionState.Failure(error, mediaUploadInfos)
+                }
+            }
+        )
+    }
 }

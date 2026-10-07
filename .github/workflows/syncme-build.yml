@@ -20,8 +20,8 @@ env:
   CI_GRADLE_ARG_PROPERTIES: --stacktrace --no-configuration-cache
 
 jobs:
-  build-debug:
-    name: Build SyncMe universal debug APK
+  build-syncme:
+    name: Build SyncMe optimized universal APK
     runs-on: ubuntu-latest
     steps:
       - name: Free disk space
@@ -47,12 +47,12 @@ jobs:
       - name: Configure Gradle
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
 
-      - name: Build universal debug APK
-        run: ./gradlew :app:assembleGplayDebug -PallWarningsAsErrors=true $CI_GRADLE_ARG_PROPERTIES
+      - name: Build optimized SyncMe APK
+        run: ./gradlew :app:assembleGplaySyncme -PallWarningsAsErrors=true $CI_GRADLE_ARG_PROPERTIES
 
       - name: Upload SyncMe APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: SyncMe-debug-apk-${{ github.run_number }}-${{ github.sha }}
+          name: SyncMe-optimized-apk-${{ github.run_number }}-${{ github.sha }}
           if-no-files-found: error
-          path: app/build/outputs/apk/gplay/debug/*-universal-debug.apk
+          path: app/build/outputs/apk/gplay/syncme/*-universal-syncme.apk

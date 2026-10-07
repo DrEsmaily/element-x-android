@@ -28,10 +28,18 @@ data class AttachmentsPreviewState(
     val displayFileTooLargeError: Boolean,
     val currentIndex: Int,
     val eventSink: (AttachmentsPreviewEvent) -> Unit,
+    val uploadProgress: UploadProgress? = null,
 ) {
     val isGallery: Boolean get() = attachments.size > 1
     val totalCount: Int get() = attachments.size
 }
+
+@Immutable
+data class UploadProgress(
+    val fraction: Float,
+    val uploadedBytes: Long,
+    val totalBytes: Long,
+)
 
 @Immutable
 sealed interface SendActionState {

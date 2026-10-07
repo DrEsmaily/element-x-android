@@ -997,6 +997,7 @@ class AttachmentsPreviewPresenterTest : RobolectricTest() {
             dispatchers = testCoroutineDispatchers(),
             mediaOptimizationSelectorPresenterFactory = mediaOptimizationSelectorPresenterFactory,
             videoCompressionPresetSelector = videoCompressionPresetSelector,
+            room = room,
             timelineMode = timelineMode,
             inReplyToEventId = null,
             mediaOptimizationConfigProvider = mediaOptimizationConfigProvider,
