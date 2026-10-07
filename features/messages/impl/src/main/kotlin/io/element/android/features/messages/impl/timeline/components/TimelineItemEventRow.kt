@@ -856,9 +856,26 @@ private fun MessageEventBubbleContent(
                     traversalIndex = -1f
                 },
                 content = { onContentLayoutChange ->
-                    Column {
+                    if (reactionContent == null) {
+                        // Keep the original lightweight layout for the common case.
                         eventContentView(contentModifier, onContentLayoutChange)
-                        reactionContent?.invoke()
+                    } else {
+                        val reactionAlignment = when (val textContent = event.content) {
+                            is TimelineItemTextContent -> when (TextDirection.detect(textContent.body)) {
+                                TextDirection.Rtl, TextDirection.ContentOrRtl -> Alignment.CenterEnd
+                                else -> Alignment.CenterStart
+                            }
+                            else -> if (event.isMine) Alignment.CenterEnd else Alignment.CenterStart
+                        }
+                        Column {
+                            eventContentView(contentModifier, onContentLayoutChange)
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = reactionAlignment,
+                            ) {
+                                reactionContent.invoke()
+                            }
+                        }
                     }
                 }
             )
