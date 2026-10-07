@@ -150,7 +150,7 @@ enum class FeatureFlags(
         key = "feature.message_search",
         title = "Message search",
         description = "Index messages locally so they can be searched. Only messages received while enabled are indexed.",
-        defaultValue = { true },
+        defaultValue = { false },
         isFinished = false,
     ),
     NewTimelineEventRenderer(
