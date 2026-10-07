@@ -9,9 +9,7 @@
 package io.element.android.features.messages.impl.timeline.components
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,7 +19,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -69,12 +66,6 @@ fun MessagesReactionButton(
         ElementTheme.colors.bgSubtleSecondary
     }
 
-    val borderColor = if (content.isHighlighted) {
-        ElementTheme.colors.borderInteractivePrimary
-    } else {
-        buttonColor
-    }
-
     val a11yText = when (content) {
         is MessagesReactionsButtonContent.Icon -> stringResource(id = R.string.screen_room_timeline_add_reaction)
         is MessagesReactionsButtonContent.Text -> content.text
@@ -90,14 +81,8 @@ fun MessagesReactionButton(
     Surface(
         modifier = modifier
             .background(Color.Transparent)
-            // Outer border, same colour as background
-            .border(
-                BorderStroke(2.dp, ElementTheme.colors.bgCanvasDefault),
-                shape = RoundedCornerShape(corner = CornerSize(14.dp))
-            )
             .padding(vertical = 2.dp, horizontal = 2.dp)
-            // Clip click indicator inside the outer border
-            .clip(RoundedCornerShape(corner = CornerSize(12.dp)))
+            .clip(RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = onClick,
                 onClickLabel = (content as? MessagesReactionsButtonContent.Reaction)?.let {
@@ -110,9 +95,7 @@ fun MessagesReactionButton(
                 onLongClick = onLongClick
             )
             .onKeyboardContextMenuAction(onLongClick)
-            // Inner border, to highlight when selected
-            .border(BorderStroke(1.dp, borderColor), RoundedCornerShape(corner = CornerSize(12.dp)))
-            .background(buttonColor, RoundedCornerShape(corner = CornerSize(12.dp)))
+            .background(buttonColor, RoundedCornerShape(12.dp))
             .padding(vertical = 4.dp, horizontal = 10.dp)
             .clearAndSetSemantics {
                 contentDescription = a11yText
