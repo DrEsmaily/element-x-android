@@ -207,6 +207,9 @@ fun TimelineView(
                     ) { timelineItem ->
                         TimelineItemRow(
                             timelineItem = timelineItem,
+                            mediaUploadProgress = (timelineItem as? TimelineItem.Event)
+                                ?.transactionId
+                                ?.let(state.mediaUploadProgress::get),
                             timelineMode = state.timelineMode,
                             timelineRoomInfo = state.timelineRoomInfo,
                             timelineProtectionState = timelineProtectionState,
