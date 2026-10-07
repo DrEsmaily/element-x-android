@@ -104,7 +104,8 @@ class DefaultMediaOptimizationSelectorPresenter(
                 size to duration
             }
 
-            val sizeEstimations = listOf(VideoCompressionPreset.HIGH, VideoCompressionPreset.STANDARD)
+            // SyncMe always sends video in Original quality.
+            val sizeEstimations = listOf(VideoCompressionPreset.HIGH)
                 .map { preset ->
                     val originalSize = localMedia.info.fileSize ?: 0L
                     val estimatedSize = if (preset == VideoCompressionPreset.HIGH) {
@@ -149,12 +150,8 @@ class DefaultMediaOptimizationSelectorPresenter(
             }
             val mediaOptimizationConfig = mediaOptimizationConfigProvider.get()
             selectedImageOptimization = AsyncData.Success(mediaOptimizationConfig.compressImages)
-            // Find the best video preset based on the default preset and the video size estimations
-            // Since the estimation for the current preset may be way too large to upload, we check the ones that provide lower file sizes
-            selectedVideoOptimizationPreset = videoCompressionPresetSelector.selectBestVideoPreset(
-                expectedVideoPreset = mediaOptimizationConfig.videoCompressionPreset,
-                videoSizeEstimations = videoSizeEstimations,
-            )
+            // SyncMe video uploads are always Original (HIGH = no re-encode).
+            selectedVideoOptimizationPreset = AsyncData.Success(VideoCompressionPreset.HIGH)
         }
 
         fun handleEvent(event: MediaOptimizationSelectorEvent) {
