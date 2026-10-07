@@ -258,6 +258,15 @@ class AndroidMediaPreProcessor(
 
     private suspend fun processVideo(uri: Uri, mimeType: String?, videoCompressionPreset: VideoCompressionPreset): MediaUploadInfo {
         Timber.d("Processing video ${uri.path.orEmpty().hash()}")
+
+        // SyncMe: HIGH is the lossless/original path. The legacy single optimization toggle
+        // maps "off" to HIGH, so disabling optimization now really skips the expensive
+        // Media3 H.264/AAC transcode instead of re-encoding the whole video at 1080p.
+        if (videoCompressionPreset == VideoCompressionPreset.HIGH) {
+            Timber.d("Video optimization disabled/high quality selected; sending original video")
+            return processOriginalVideo(uri, mimeType)
+        }
+
         val resultFile = runCatchingExceptions {
             videoCompressor.compress(uri, videoCompressionPreset)
                 .onEach {
@@ -285,10 +294,20 @@ class AndroidMediaPreProcessor(
                 thumbnailFile = thumbnailInfo?.file
             )
         } else {
-            Timber.d("Could not transcode video ${uri.path.orEmpty().hash()}, sending original file as plain file")
-            // If the video could not be compressed, just use the original one, but send it as a file
-            return processFile(uri, MimeTypes.OctetStream)
+            Timber.d("Could not transcode video ${uri.path.orEmpty().hash()}, falling back to original video")
+            return processOriginalVideo(uri, mimeType)
         }
+    }
+
+    private suspend fun processOriginalVideo(uri: Uri, mimeType: String?): MediaUploadInfo {
+        val file = copyToTmpFile(uri)
+        val thumbnailInfo = thumbnailFactory.createVideoThumbnail(file)
+        val videoInfo = extractVideoMetadata(file, mimeType, thumbnailInfo)
+        return MediaUploadInfo.Video(
+            file = file,
+            videoInfo = videoInfo,
+            thumbnailFile = thumbnailInfo?.file,
+        )
     }
 
     private suspend fun processAudio(uri: Uri, mimeType: String?): MediaUploadInfo {
