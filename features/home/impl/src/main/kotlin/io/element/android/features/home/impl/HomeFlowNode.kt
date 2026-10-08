@@ -65,6 +65,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.parcelize.Parcelize
@@ -190,29 +191,21 @@ class HomeFlowNode(
                 }
 
                 val job = sessionCoroutineScope.launch {
-                    runCatchingExceptions {
-                        matrixClient.getJoinedRoom(roomId)
-                    }.fold(
-                        onSuccess = { joinedRoom ->
-                            if (isActive) {
-                                callback.navigateToRoom(roomId = roomId, eventId = eventId, joinedRoom = joinedRoom)
-                                loadingJoinedRoomJob.value = AsyncData.Success(coroutineContext.job)
-                                // Wait a bit before resetting the state to avoid allowing to open several rooms
-                                delay(200.milliseconds)
-                                loadingJoinedRoomJob.value = AsyncData.Uninitialized
-                            }
-                        },
-                        onFailure = {
-                            // If the operation wasn't cancelled, navigate without the room, using the room id
-                            if (it !is CancellationException) {
-                                callback.navigateToRoom(roomId = roomId, eventId = null, joinedRoom = null)
-                            }
-                            loadingJoinedRoomJob.value = AsyncData.Failure(error = it, prevData = coroutineContext.job)
-                            // Wait a bit before resetting the state to avoid allowing to open several rooms
-                            delay(200.milliseconds)
-                            loadingJoinedRoomJob.value = AsyncData.Uninitialized
+                    // Don't block the screen transition while waiting for a room instance.
+                    // If it is already hot in memory, use it; otherwise navigate immediately and
+                    // let RoomFlowNode resolve/load the room behind the newly opened screen.
+                    val joinedRoom = runCatchingExceptions {
+                        withTimeoutOrNull(50.milliseconds) {
+                            matrixClient.getJoinedRoom(roomId)
                         }
-                    )
+                    }.getOrNull()
+
+                    if (isActive) {
+                        callback.navigateToRoom(roomId = roomId, eventId = eventId, joinedRoom = joinedRoom)
+                        loadingJoinedRoomJob.value = AsyncData.Success(coroutineContext.job)
+                        delay(200.milliseconds)
+                        loadingJoinedRoomJob.value = AsyncData.Uninitialized
+                    }
                 }
                 loadingJoinedRoomJob.value = AsyncData.Loading(job)
             }
