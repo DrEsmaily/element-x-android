@@ -122,13 +122,7 @@ fun ConfigureRoomView(
                 onTopicChange = { state.eventSink(ConfigureRoomEvent.TopicChanged(it)) },
             )
             Spacer(modifier = Modifier.height(16.dp))
-            if (!state.isSpace && state.spaces.isNotEmpty()) {
-                SelectParentSpaceOptions(
-                    spaces = state.spaces,
-                    selectedSpace = state.config.parentSpace,
-                    onSelectSpace = { state.eventSink(ConfigureRoomEvent.SetParentSpace(it)) },
-                )
-            }
+            // SyncMe UI does not expose Matrix Spaces.
             RoomJoinRuleOptions(
                 options = state.availableJoinRules,
                 selected = state.config.visibilityState.joinRuleItem,
