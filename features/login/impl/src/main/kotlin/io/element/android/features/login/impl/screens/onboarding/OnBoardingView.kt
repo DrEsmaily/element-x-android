@@ -216,7 +216,32 @@ private fun OnBoardingContent(state: OnBoardingState) {
                             "syncme_launcher", "drawable", context.packageName
                         )
                         if (fullResolution != 0) {
-                            setImageResource(fullResolution)
+                            // The supplied artwork has a dark square baked into the image.
+                            // Extract the luminous SyncMe symbol on a transparent bitmap
+                            // instead of drawing the complete square over the welcome gradient.
+                            val original = android.graphics.BitmapFactory.decodeResource(context.resources, fullResolution)
+                            if (original != null) {
+                                val transparent = original.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
+                                val pixels = IntArray(transparent.width * transparent.height)
+                                transparent.getPixels(pixels, 0, transparent.width, 0, 0, transparent.width, transparent.height)
+                                for (i in pixels.indices) {
+                                    val pixel = pixels[i]
+                                    val red = android.graphics.Color.red(pixel)
+                                    val green = android.graphics.Color.green(pixel)
+                                    val blue = android.graphics.Color.blue(pixel)
+                                    val brightness = maxOf(red, green, blue)
+                                    // Keep bright cyan/blue strokes; fade the dark baked-in background.
+                                    val opacity = ((brightness - 65) * 255 / 95).coerceIn(0, 255)
+                                    pixels[i] = android.graphics.Color.argb(
+                                        opacity * android.graphics.Color.alpha(pixel) / 255,
+                                        red, green, blue
+                                    )
+                                }
+                                transparent.setPixels(pixels, 0, transparent.width, 0, 0, transparent.width, transparent.height)
+                                setImageBitmap(transparent)
+                            } else {
+                                setImageResource(fullResolution)
+                            }
                         } else {
                             setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
                         }
