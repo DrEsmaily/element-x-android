@@ -21,6 +21,7 @@ import io.element.android.libraries.matrix.api.media.MediaPreviewValue
 import io.element.android.libraries.matrix.api.tracing.LogLevel
 import io.element.android.libraries.matrix.api.tracing.TraceLogPack
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.CustomRoomTag
 import io.element.android.libraries.preferences.api.store.NotificationSound
 import io.element.android.libraries.preferences.api.store.NotificationSound.Companion.toStored
 import io.element.android.libraries.preferences.api.store.NotificationSoundChannelConfig
@@ -45,10 +46,17 @@ private val messageSoundDisplayNameKey = stringPreferencesKey("notificationMessa
 private val callRingtoneUriKey = stringPreferencesKey("notificationCallRingtoneUri")
 private val callRingtoneChannelVersionKey = intPreferencesKey("notificationCallRingtoneChannelVersion")
 private val callRingtoneDisplayNameKey = stringPreferencesKey("notificationCallRingtoneDisplayName")
+private val customRoomTagsKey = stringPreferencesKey("syncmeCustomRoomTags")
+private val activeCustomRoomTagIdKey = stringPreferencesKey("syncmeActiveCustomRoomTagId")
 
 // URLs never contain a newline, so it is a safe delimiter to persist an ordered list in a single String.
 private const val HOMESERVER_HISTORY_DELIMITER = "\n"
 private const val MAX_HOMESERVER_HISTORY_SIZE = 20
+private const val CUSTOM_TAG_RECORD_SEPARATOR = "\n"
+private const val CUSTOM_TAG_FIELD_SEPARATOR = "\t"
+private const val CUSTOM_TAG_ROOM_SEPARATOR = "\u001f"
+private const val MAX_CUSTOM_ROOM_TAGS = 30
+private const val MAX_CUSTOM_ROOM_TAG_NAME_LENGTH = 32
 
 @ContributesBinding(AppScope::class)
 class DefaultAppPreferencesStore(
@@ -271,8 +279,102 @@ class DefaultAppPreferencesStore(
         )
     }
 
+    override fun getCustomRoomTagsFlow(): Flow<List<CustomRoomTag>> {
+        return store.data.map { prefs -> prefs.readCustomRoomTags() }
+    }
+
+    override fun getActiveCustomRoomTagIdFlow(): Flow<String?> {
+        return store.data.map { prefs ->
+            val active = prefs[activeCustomRoomTagIdKey]
+            active?.takeIf { id -> prefs.readCustomRoomTags().any { it.id == id } }
+        }
+    }
+
+    override suspend fun createCustomRoomTag(name: String): String? {
+        val normalizedName = name.trim().take(MAX_CUSTOM_ROOM_TAG_NAME_LENGTH)
+        if (normalizedName.isBlank()) return null
+        var createdId: String? = null
+        store.edit { prefs ->
+            val existing = prefs.readCustomRoomTags()
+            if (existing.size >= MAX_CUSTOM_ROOM_TAGS) return@edit
+            if (existing.any { it.name.equals(normalizedName, ignoreCase = true) }) return@edit
+            val id = java.util.UUID.randomUUID().toString()
+            prefs.writeCustomRoomTags(existing + CustomRoomTag(id, normalizedName, emptySet()))
+            createdId = id
+        }
+        return createdId
+    }
+
+    override suspend fun deleteCustomRoomTag(tagId: String) {
+        store.edit { prefs ->
+            val updated = prefs.readCustomRoomTags().filterNot { it.id == tagId }
+            prefs.writeCustomRoomTags(updated)
+            if (prefs[activeCustomRoomTagIdKey] == tagId) {
+                prefs.remove(activeCustomRoomTagIdKey)
+            }
+        }
+    }
+
+    override suspend fun setActiveCustomRoomTagId(tagId: String?) {
+        store.edit { prefs ->
+            if (tagId != null && prefs.readCustomRoomTags().any { it.id == tagId }) {
+                prefs[activeCustomRoomTagIdKey] = tagId
+            } else {
+                prefs.remove(activeCustomRoomTagIdKey)
+            }
+        }
+    }
+
+    override suspend fun toggleRoomInCustomTag(tagId: String, roomId: String) {
+        store.edit { prefs ->
+            val updated = prefs.readCustomRoomTags().map { tag ->
+                if (tag.id != tagId) {
+                    tag
+                } else {
+                    val rooms = tag.roomIds.toMutableSet()
+                    if (!rooms.add(roomId)) rooms.remove(roomId)
+                    tag.copy(roomIds = rooms)
+                }
+            }
+            prefs.writeCustomRoomTags(updated)
+        }
+    }
+
     override suspend fun reset() {
         store.edit { it.clear() }
+    }
+}
+
+private fun Preferences.readCustomRoomTags(): List<CustomRoomTag> {
+    val raw = this[customRoomTagsKey].orEmpty()
+    if (raw.isEmpty()) return emptyList()
+    return raw.split(CUSTOM_TAG_RECORD_SEPARATOR)
+        .mapNotNull { record ->
+            val parts = record.split(CUSTOM_TAG_FIELD_SEPARATOR, limit = 3)
+            if (parts.size < 2) return@mapNotNull null
+            val id = parts[0]
+            val name = parts[1]
+            if (id.isBlank() || name.isBlank()) return@mapNotNull null
+            val roomIds = parts.getOrNull(2)
+                .orEmpty()
+                .split(CUSTOM_TAG_ROOM_SEPARATOR)
+                .filter { it.isNotEmpty() }
+                .toSet()
+            CustomRoomTag(id = id, name = name, roomIds = roomIds)
+        }
+        .take(MAX_CUSTOM_ROOM_TAGS)
+}
+
+private fun androidx.datastore.preferences.core.MutablePreferences.writeCustomRoomTags(tags: List<CustomRoomTag>) {
+    this[customRoomTagsKey] = tags.take(MAX_CUSTOM_ROOM_TAGS).joinToString(CUSTOM_TAG_RECORD_SEPARATOR) { tag ->
+        val safeName = tag.name
+            .replace(CUSTOM_TAG_FIELD_SEPARATOR, " ")
+            .replace(CUSTOM_TAG_RECORD_SEPARATOR, " ")
+            .take(MAX_CUSTOM_ROOM_TAG_NAME_LENGTH)
+        val safeRooms = tag.roomIds
+            .map { it.replace(CUSTOM_TAG_ROOM_SEPARATOR, "") }
+            .joinToString(CUSTOM_TAG_ROOM_SEPARATOR)
+        listOf(tag.id, safeName, safeRooms).joinToString(CUSTOM_TAG_FIELD_SEPARATOR)
     }
 }
 
