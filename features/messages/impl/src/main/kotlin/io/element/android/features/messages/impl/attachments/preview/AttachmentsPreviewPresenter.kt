@@ -234,6 +234,11 @@ class AttachmentsPreviewPresenter(
         fun handleEvent(event: AttachmentsPreviewEvent) {
             when (event) {
                 is AttachmentsPreviewEvent.SendAttachment -> {
+                    // Ignore duplicate send taps while an existing send request is preparing
+                    // or uploading media. A second coroutine here can enqueue the same file twice.
+                    if (ongoingSendAttachmentJob.value?.isActive == true ||
+                        sendActionState.value is SendActionState.Sending.Uploading
+                    ) return
                     ongoingSendAttachmentJob.value = coroutineScope.launch {
                         if (preprocessMediaJob?.isActive != true && sendActionState.value !is SendActionState.Sending.ReadyToUpload) {
                             val configs = mediaOptimizationSelectorStates.mapIndexed { index, selectorState ->
