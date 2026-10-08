@@ -18,6 +18,7 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 @Inject
 class RoomListFiltersPresenter(
@@ -47,8 +48,11 @@ class RoomListFiltersPresenter(
                 }
                 is RoomListFiltersEvent.CreateCustomTag -> {
                     coroutineScope.launch {
-                        // Creating a tag must not select or activate it.
-                        appPreferencesStore.createCustomRoomTag(event.name)
+                        // SyncMe allows at most three personal tags per account.
+                        // Re-read stored tags to avoid accepting rapid duplicate create taps.
+                        if (appPreferencesStore.getCustomRoomTagsFlow().first().size < 3) {
+                            appPreferencesStore.createCustomRoomTag(event.name)
+                        }
                     }
                 }
                 is RoomListFiltersEvent.DeleteCustomTag -> {
