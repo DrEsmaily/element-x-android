@@ -181,8 +181,9 @@ fun TimelineView(
         state.eventSink(TimelineEvent.LoadMore(Timeline.PaginationDirection.BACKWARDS))
     }
 
-    // Animate alpha when timeline is first displayed, to avoid flashes or glitching when viewing rooms
-    AnimatedVisibility(visible = true, enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(durationMillis = 75))) {
+    // SyncMe Smooth: do not create an always-visible transition for each room timeline.
+    // The timeline content is ready to render as soon as the room becomes visible.
+    run {
         val composeLocalTimelineEventRendererConfig = remember(state.useNewTimelineEventRenderer, state.timelineRoomInfo.currentUserId) {
             ComposeLocalTimelineEventRendererConfig(
                 isComposeRendererEnabled = state.useNewTimelineEventRenderer,
@@ -205,12 +206,13 @@ fun TimelineView(
                         contentType = { timelineItem -> timelineItem.contentType() },
                         key = { timelineItem -> timelineItem.identifier() },
                     ) { timelineItem ->
+                        val timelineItemId = timelineItem.identifier()
                         TimelineItemRow(
                             timelineItem = timelineItem,
                             timelineMode = state.timelineMode,
                             timelineRoomInfo = state.timelineRoomInfo,
                             timelineProtectionState = timelineProtectionState,
-                            isLastOutgoingMessage = state.isLastOutgoingMessage(timelineItem.identifier()),
+                            isLastOutgoingMessage = state.isLastOutgoingMessage(timelineItemId),
                             focusedEventId = state.focusedEventId,
                             displayThreadSummaries = state.displayThreadSummaries,
                             mediaUploadProgress = (timelineItem as? TimelineItem.Event)
