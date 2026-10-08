@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: syncme-release-${{ github.ref }}-${{ github.sha }}
-  cancel-in-progress: false
+  group: syncme-release-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx8g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8 -XX:+UseG1GC
