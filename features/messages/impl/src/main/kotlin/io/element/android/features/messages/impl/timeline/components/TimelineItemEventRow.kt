@@ -304,6 +304,7 @@ fun TimelineItemEventRow(
                             ),
                         eventSink = eventSink,
                         onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
+                        bubbleWidthPx = bubbleWidthPx.intValue,
                         uploadBubbleMinWidth = uploadBubbleMinWidth,
                         eventContentView = eventContentView,
                     )
@@ -325,6 +326,7 @@ fun TimelineItemEventRow(
                 onMoreReactionsClick = { onMoreReactionsClick(event) },
                 eventSink = eventSink,
                 onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
+                        bubbleWidthPx = bubbleWidthPx.intValue,
                 uploadBubbleMinWidth = uploadBubbleMinWidth,
                 eventContentView = eventContentView,
             )
@@ -570,6 +572,7 @@ private fun TimelineItemEventRowContent(
     onMoreReactionsClick: (event: TimelineItem.Event) -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
     onBubbleWidthChanged: (Int) -> Unit,
+    bubbleWidthPx: Int,
     uploadBubbleMinWidth: Dp?,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
@@ -634,7 +637,13 @@ private fun TimelineItemEventRowContent(
         )
         MessageEventBubble(
             modifier = Modifier
-                .then(if (uploadBubbleMinWidth != null) Modifier.widthIn(min = uploadBubbleMinWidth) else Modifier)
+                // Measure the media at its natural size first. Expand only a genuinely
+                // narrow bubble, rather than giving every uploading video a wide constraint.
+                .then(
+                    if (uploadBubbleMinWidth != null && bubbleWidthPx > 0 &&
+                        with(LocalDensity.current) { bubbleWidthPx.toDp() } < uploadBubbleMinWidth
+                    ) Modifier.widthIn(min = uploadBubbleMinWidth) else Modifier
+                )
                 .onSizeChanged { onBubbleWidthChanged(it.width) }
                 .constrainAs(message) {
                     val topMargin = if (bubbleState.cutTopStart) {
