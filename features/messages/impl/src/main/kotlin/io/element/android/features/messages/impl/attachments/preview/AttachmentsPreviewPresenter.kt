@@ -551,6 +551,16 @@ class AttachmentsPreviewPresenter(
         }
         val totalBytes = fileSizes.sum().takeIf { it > 0L } ?: 1L
 
+        // Make progress visible immediately instead of waiting for the first SDK callback.
+        // Subsequent values come from the Matrix SDK SendQueueUpdate.MediaUpload stream.
+        onUploadProgress(
+            UploadProgress(
+                fraction = 0f,
+                uploadedBytes = 0L,
+                totalBytes = totalBytes,
+            )
+        )
+
         val result = runCatchingExceptions {
             coroutineScope {
                 val progressByIndex = mutableMapOf<Int, Float>()
