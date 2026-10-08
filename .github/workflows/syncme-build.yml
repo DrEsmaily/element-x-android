@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - syncme-163-clean-ui
+      - syncme-164-tags-pages
     paths:
       - '.github/syncme-release-trigger.txt'
 
