@@ -18,3 +18,5 @@ Release request after registering branch in existing workflow.
 Welcome refresh release: Stay connected, Stay private / Messaging made simple / by 0x07c4.
 
 Build after welcome credit placement and tag icon / preview fixes.
+
+Build crisp vector welcome logo and unified tag system icons.
