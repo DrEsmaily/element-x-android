@@ -103,6 +103,13 @@ fun RoomListFiltersView(
         )
     }
     val previousFilters = remember { mutableStateOf(listOf<RoomListFilter>()) }
+    LaunchedEffect(state.activeCustomTagId, state.customTags, state.filterSelectionStates.size) {
+        val selectedTagIndex = state.customTags.indexOfFirst { it.id == state.activeCustomTagId }
+        if (selectedTagIndex >= 0) {
+            // The clear button and built-in filters precede the custom chips.
+            lazyListState.animateScrollToItem(1 + state.filterSelectionStates.size + selectedTagIndex)
+        }
+    }
     LazyRow(
         contentPadding = PaddingValues(start = 8.dp, end = 16.dp),
         modifier = modifier.fillMaxWidth(),
@@ -150,9 +157,11 @@ fun RoomListFiltersView(
                 RoomListCustomTagView(
                     tag = tag,
                     selected = state.activeCustomTagId == tag.id,
+                    modifier = Modifier.animateItem(),
                     onClick = {
                         state.eventSink(RoomListFiltersEvent.SelectCustomTag(tag.id))
-                        scrollToStart++
+                        // Scroll this actual chip into the leading position, instead of
+                        // forcing a repeated animated scroll to absolute index zero.
                     },
                 )
             }
