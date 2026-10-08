@@ -9,6 +9,8 @@
 package io.element.android.features.login.impl.screens.onboarding
 
 import androidx.compose.foundation.Image
+import android.widget.ImageView
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -209,9 +211,14 @@ private fun OnBoardingContent(state: OnBoardingState) {
                 verticalBias = -0.4f
             )
         ) {
-            ElementLogoAtom(
-                size = ElementLogoAtomSize.Large,
-                modifier = Modifier.padding(top = ElementLogoAtomSize.Large.shadowRadius / 2)
+            // Display the installed SyncMe app icon rather than the upstream Element symbol.
+            AndroidView(
+                modifier = Modifier.height(160.dp).fillMaxWidth(),
+                factory = { context -> ImageView(context).apply {
+                    setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    contentDescription = "SyncMe"
+                } },
             )
         }
         Box(
@@ -227,18 +234,13 @@ private fun OnBoardingContent(state: OnBoardingState) {
                 horizontalAlignment = CenterHorizontally,
             ) {
                 Text(
-                    text = stringResource(id = R.string.screen_onboarding_welcome_title),
+                    text = "SyncMe",
                     color = ElementTheme.colors.textPrimary,
                     style = ElementTheme.typography.fontHeadingLgBold,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(id = R.string.screen_onboarding_welcome_message, state.productionApplicationName),
-                    color = ElementTheme.colors.textPrimary,
-                    style = ElementTheme.typography.fontBodyLgRegular,
-                    textAlign = TextAlign.Center,
-                )
+
             }
         }
     }
@@ -277,74 +279,20 @@ private fun OnBoardingButtons(
     }
 
     ButtonColumnMolecule {
-        val signInButtonStringRes = if (state.canLoginWithQrCode || state.canCreateAccount) {
-            R.string.screen_onboarding_sign_in_manually
-        } else {
-            CommonStrings.action_continue
-        }
-        if (state.canLoginWithQrCode) {
-            Button(
-                text = stringResource(id = R.string.screen_onboarding_sign_in_with_qr_code),
-                leadingIcon = IconSource.Vector(CompoundIcons.QrCode()),
-                onClick = onSignInWithQrCode,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
         val defaultAccountProvider = state.defaultAccountProvider
-        if (defaultAccountProvider == null) {
-            Button(
-                text = stringResource(id = signInButtonStringRes),
-                onClick = {
-                    onSignIn(state.mustChooseAccountProvider)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag(TestTags.onBoardingSignIn)
-            )
-        } else {
-            Button(
-                text = stringResource(id = R.string.screen_onboarding_sign_in_to, defaultAccountProvider.friendlyServerName()),
-                showProgress = isLoading,
-                onClick = {
+        Button(
+            text = "Login",
+            showProgress = isLoading,
+            onClick = {
+                if (defaultAccountProvider != null) {
                     state.eventSink(OnBoardingEvent.OnSignIn(defaultAccountProvider))
-                },
-                enabled = state.submitEnabled || isLoading,
-                modifier = Modifier
-                    .fillMaxWidth()
-            )
-        }
-        if (state.canCreateAccount) {
-            TextButton(
-                text = stringResource(id = R.string.screen_onboarding_sign_up),
-                onClick = onCreateAccount,
-                modifier = Modifier
-                    .fillMaxWidth()
-            )
-        }
-        if (state.isAddingAccount.not()) {
-            if (state.canReportBug) {
-                // Add a report problem text button. Use a Text since we need a special theme here.
-                Text(
-                    modifier = Modifier
-                        .clickable(onClick = onReportProblem)
-                        .padding(16.dp),
-                    text = stringResource(id = CommonStrings.common_report_a_problem),
-                    style = ElementTheme.typography.fontBodySmRegular,
-                    color = ElementTheme.colors.textSecondary,
-                )
-            } else {
-                Text(
-                    modifier = Modifier
-                        .clickable(role = Role.Button) {
-                            state.eventSink(OnBoardingEvent.OnVersionClick)
-                        }
-                        .padding(16.dp),
-                    text = stringResource(id = R.string.screen_onboarding_app_version, state.version),
-                    style = ElementTheme.typography.fontBodySmRegular,
-                    color = ElementTheme.colors.textSecondary,
-                )
-            }
-        }
+                } else {
+                    onSignIn(state.mustChooseAccountProvider)
+                }
+            },
+            enabled = defaultAccountProvider == null || state.submitEnabled || isLoading,
+            modifier = Modifier.fillMaxWidth().testTag(TestTags.onBoardingSignIn),
+        )
     }
 }
 
