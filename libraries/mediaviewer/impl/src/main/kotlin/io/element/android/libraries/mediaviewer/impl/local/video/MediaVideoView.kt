@@ -248,6 +248,8 @@ private fun ExoPlayerMediaVideoView(
                         resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
                         layoutParams = FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT)
                         useController = false
+                        setBackgroundColor(android.graphics.Color.BLACK)
+                        setShutterBackgroundColor(android.graphics.Color.BLACK)
                         contentDescription = videoDescription
                     }
                 },
