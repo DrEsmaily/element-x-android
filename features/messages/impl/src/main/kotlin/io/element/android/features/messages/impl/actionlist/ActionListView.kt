@@ -117,8 +117,6 @@ fun ActionListView(
 ) {
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
-        // Never return from Expanded to PartiallyExpanded on system Back.
-        confirmValueChange = { it != SheetValue.PartiallyExpanded },
     )
     val coroutineScope = rememberCoroutineScope()
     val targetItem = (state.target as? ActionListState.Target.Success)?.event
