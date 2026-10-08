@@ -164,6 +164,10 @@ interface AppPreferencesStore {
     suspend fun createCustomRoomTag(name: String): String?
 
     /** Deletes a tag and clears the active selection when it points to this tag. */
+    suspend fun renameCustomRoomTag(tagId: String, name: String): Boolean
+
+    suspend fun clearCustomRoomTagChats(tagId: String)
+
     suspend fun deleteCustomRoomTag(tagId: String)
 
     /** Selects a custom tag filter. Pass null to clear it. */
