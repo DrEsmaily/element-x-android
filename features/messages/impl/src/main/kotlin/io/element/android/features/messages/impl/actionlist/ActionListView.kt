@@ -35,6 +35,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.ripple
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
@@ -174,6 +175,8 @@ fun ActionListView(
             modifier = modifier,
             scrollable = false,
         ) {
+            // Dismiss the entire action sheet with one Back, never step down to partial.
+            BackHandler { onDismiss() }
             ActionListViewContent(
                 state = state,
                 onActionClick = ::onItemActionClick,
