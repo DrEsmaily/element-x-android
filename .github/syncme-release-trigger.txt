@@ -26,3 +26,5 @@ Release following successful Build 170: hide home custom tag chip icons; hide ma
 Build 172: tag auto-scroll, short local username search, SyncMe by 0x07c4 footer, Powered by Matrix login subtitle, GitHub run-number Android version.
 
 Build 173: automatic RTL layout for Persian/Arabic polls; hide room-members progress indicator when cached members are already displayed.
+
+Build 174: approved white SyncMe SM notification icon for message/call alerts; publish ARM64 plus optimized universal APK without unrelated product changes.
