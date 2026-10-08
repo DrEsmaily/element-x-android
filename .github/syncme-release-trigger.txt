@@ -1,0 +1,4 @@
+SyncMe A/B release trigger
+Variant: syncme-ab-smooth
+Source commit before trigger: 7cc2b38850074d1e6d20e088d6e6b5386369b630
+This is the single explicit release trigger for this branch after applying shared changes.
