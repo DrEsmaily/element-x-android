@@ -26,6 +26,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -125,6 +127,23 @@ fun RoomDetailsView(
     additionalSections: @Composable ColumnScope.() -> Unit = {},
     leaveRoomView: @Composable () -> Unit,
 ) {
+    var showCloseGroupConfirmation by remember { mutableStateOf(false) }
+    if (showCloseGroupConfirmation) {
+        AlertDialog(
+            onDismissRequest = { if (!state.closingGroup) showCloseGroupConfirmation = false },
+            title = { androidx.compose.material3.Text("Close group for everyone?") },
+            text = { androidx.compose.material3.Text("All members you can moderate will be banned and you will leave. This does not erase past messages, downloaded files or federated copies. This action cannot be undone automatically.") },
+            confirmButton = {
+                TextButton(enabled = !state.closingGroup, onClick = {
+                    showCloseGroupConfirmation = false
+                    state.eventSink(RoomDetailsEvent.CloseGroupForEveryone)
+                }) { androidx.compose.material3.Text("Close group") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCloseGroupConfirmation = false }) { androidx.compose.material3.Text("Cancel") }
+            },
+        )
+    }
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     Scaffold(
         modifier = modifier,
@@ -331,7 +350,11 @@ fun RoomDetailsView(
                 dmOtherMemberDetailsState = state.dmOtherMemberDetailsState,
                 canReportRoom = state.canReportRoom,
                 onReportRoomClick = onReportRoomClick,
-                onLeaveRoomClick = { state.eventSink(RoomDetailsEvent.LeaveRoom(needsConfirmation = true)) }
+                onLeaveRoomClick = { state.eventSink(RoomDetailsEvent.LeaveRoom(needsConfirmation = true)) },
+                canCloseGroup = state.canCloseGroup,
+                closingGroup = state.closingGroup,
+                closeGroupError = state.closeGroupError,
+                onCloseGroupClick = { showCloseGroupConfirmation = true }
             )
             if (state.showDebugInfo) {
                 DebugInfoSection(
@@ -832,6 +855,10 @@ private fun OtherActionsSection(
     canReportRoom: Boolean,
     onReportRoomClick: () -> Unit,
     onLeaveRoomClick: () -> Unit,
+    canCloseGroup: Boolean,
+    closingGroup: Boolean,
+    closeGroupError: String?,
+    onCloseGroupClick: () -> Unit,
     dmOtherMemberDetailsState: UserProfileState?,
 ) {
     PreferenceCategory {
@@ -848,6 +875,20 @@ private fun OtherActionsSection(
                 style = ListItemStyle.Destructive,
                 onClick = onReportRoomClick,
             )
+        }
+        if (canCloseGroup) {
+            ListItem(
+                content = { Text("Close group for everyone") },
+                leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Delete())),
+                style = ListItemStyle.Destructive,
+                onClick = onCloseGroupClick,
+            )
+        }
+        if (closingGroup) {
+            ListItem(content = { Text("Closing group…") })
+        }
+        if (closeGroupError != null) {
+            ListItem(content = { Text("Group closure failed: $closeGroupError") })
         }
         ListItem(
             content = {
