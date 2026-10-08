@@ -209,7 +209,7 @@ fun RoomListFiltersView(
         SyncMeTagManager(
             tags = state.customTags,
             onDismiss = { showTagManager = false },
-            onCreate = { state.eventSink(RoomListFiltersEvent.CreateCustomTag(it)) },
+            onCreate = { name, icon -> state.eventSink(RoomListFiltersEvent.CreateCustomTag(name, icon)) },
             onRename = { id, name -> state.eventSink(RoomListFiltersEvent.RenameCustomTag(id, name)) },
             onClearChats = { state.eventSink(RoomListFiltersEvent.ClearCustomTagChats(it)) },
             onDelete = { state.eventSink(RoomListFiltersEvent.DeleteCustomTag(it)) },
@@ -225,7 +225,7 @@ fun RoomListFiltersView(
 private fun SyncMeTagManager(
     tags: List<CustomRoomTag>,
     onDismiss: () -> Unit,
-    onCreate: (String) -> Unit,
+    onCreate: (String, String) -> Unit,
     onRename: (String, String) -> Unit,
     onClearChats: (String) -> Unit,
     onDelete: (String) -> Unit,
@@ -234,6 +234,7 @@ private fun SyncMeTagManager(
     var page by rememberSaveable { mutableStateOf("manage") }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var draft by rememberSaveable { mutableStateOf("") }
+    var chosenIcon by rememberSaveable { mutableStateOf("◈") }
     var confirmDelete by rememberSaveable { mutableStateOf(false) }
     val selected = tags.firstOrNull { it.id == selectedId }
     val remaining = 3 - tags.size
@@ -273,7 +274,7 @@ private fun SyncMeTagManager(
                         HorizontalDivider()
                         androidx.compose.material3.Text("Custom tags", style = MaterialTheme.typography.titleMedium)
                         tags.forEach { tag ->
-                            TagManagerRow("◈", tag.name, "${tag.roomIds.size} chats", {
+                            TagManagerRow(tag.icon, tag.name, "${tag.roomIds.size} chats", {
                                 selectedId = tag.id
                                 page = "details"
                             })
@@ -281,7 +282,7 @@ private fun SyncMeTagManager(
                         if (tags.isEmpty()) androidx.compose.material3.Text("No custom tags yet.")
                         Spacer(Modifier.weight(1f))
                         Button(
-                            onClick = { draft = ""; page = "create" },
+                            onClick = { draft = ""; chosenIcon = "◈"; page = "create" },
                             enabled = remaining > 0,
                             modifier = Modifier.fillMaxWidth(),
                         ) { androidx.compose.material3.Text("+ Create new tag") }
@@ -303,10 +304,16 @@ private fun SyncMeTagManager(
                         )
                         androidx.compose.material3.Text("${draft.length}/20", color = ElementTheme.colors.textSecondary)
                         androidx.compose.material3.Text("Choose an icon (optional)")
-                        androidx.compose.material3.Text("◈     ♡     ★     ▣     ✈",
-                            style = MaterialTheme.typography.headlineMedium, color = ElementTheme.colors.textSecondary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            listOf("◈", "♡", "★", "▣", "✈").forEach { icon ->
+                                OutlinedButton(onClick = { chosenIcon = icon },
+                                    contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                    androidx.compose.material3.Text(if (chosenIcon == icon) "[$icon]" else icon)
+                                }
+                            }
+                        }
                         androidx.compose.material3.Text("Preview")
-                        TagManagerRow("◈", draft.ifBlank { "Tag name" }, "0 chats", {})
+                        TagManagerRow(chosenIcon, draft.ifBlank { "Tag name" }, "0 chats", {})
                         Spacer(Modifier.weight(1f))
                         Button(
                             onClick = {
@@ -314,7 +321,7 @@ private fun SyncMeTagManager(
                                     selectedId?.let { onRename(it, trimmed) }
                                     page = "details"
                                 } else {
-                                    onCreate(trimmed)
+                                    onCreate(trimmed, chosenIcon)
                                     page = "manage"
                                 }
                             },
@@ -330,7 +337,7 @@ private fun SyncMeTagManager(
                             TextButton(onClick = { page = "manage" }) { androidx.compose.material3.Text("Back") }
                         } else {
                             Spacer(Modifier.height(10.dp))
-                            androidx.compose.material3.Text("◈", modifier = Modifier.align(Alignment.CenterHorizontally),
+                            androidx.compose.material3.Text(selected.icon, modifier = Modifier.align(Alignment.CenterHorizontally),
                                 style = MaterialTheme.typography.headlineLarge)
                             androidx.compose.material3.Text(selected.name, modifier = Modifier.align(Alignment.CenterHorizontally),
                                 style = MaterialTheme.typography.titleLarge)
