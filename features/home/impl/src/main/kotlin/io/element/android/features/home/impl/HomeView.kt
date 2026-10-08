@@ -8,7 +8,6 @@
 
 package io.element.android.features.home.impl
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -169,11 +168,6 @@ private fun HomeScaffold(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(appBarState)
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     val roomListState: RoomListState = state.roomListState
-
-    BackHandler(enabled = state.isBackHandlerEnabled) {
-        // SyncMe exposes a chats-only home UI. Spaces remain supported internally
-        // by Matrix, but are intentionally not part of the user-facing navigation.
-    }
 
     val roomsLazyListState = rememberLazyListState()
 
