@@ -20,7 +20,11 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Build unchanged official release source
+      - name: Use separate package name for side-by-side testing
+        run: |
+          sed -i '/getByName("release") {/a\            applicationIdSuffix = ".officialbenchmark"' app/build.gradle.kts
+          git diff --check
+      - name: Build official release source
         run: ./gradlew :app:assembleGplayRelease -x lintVitalGplayRelease --stacktrace --no-configuration-cache
       - uses: actions/upload-artifact@v4
         with:
