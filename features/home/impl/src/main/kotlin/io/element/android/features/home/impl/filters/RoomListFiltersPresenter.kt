@@ -51,7 +51,7 @@ class RoomListFiltersPresenter(
                         // SyncMe allows at most three personal tags per account.
                         // Re-read stored tags to avoid accepting rapid duplicate create taps.
                         if (appPreferencesStore.getCustomRoomTagsFlow().first().size < 3) {
-                            appPreferencesStore.createCustomRoomTag(event.name)
+                            appPreferencesStore.createCustomRoomTag(event.name, event.icon)
                         }
                     }
                 }
