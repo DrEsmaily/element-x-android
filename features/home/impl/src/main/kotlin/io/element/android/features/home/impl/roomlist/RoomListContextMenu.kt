@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -46,6 +47,7 @@ fun RoomListContextMenu(
     onReportRoomClick: (roomId: RoomId) -> Unit
 ) {
     ModalBottomSheet(
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         onDismissRequest = { eventSink(RoomListEvent.HideContextMenu) },
         scrollable = false,
     ) {
@@ -137,6 +139,15 @@ private fun RoomListModalBottomSheetContent(
                 ),
             )
         }
+        run {
+            ListItem(
+                content = {
+                    Text(
+                        text = "Tags",
+                        style = ElementTheme.typography.fontBodyMdMedium,
+                    )
+                },
+            )
         val (textResId, icon) = if (contextMenu.isFavorite) {
             CommonStrings.common_favourited to CompoundIcons.FavouriteSolid()
         } else {
@@ -161,15 +172,6 @@ private fun RoomListModalBottomSheetContent(
                 onFavoriteChange(!contextMenu.isFavorite)
             },
         )
-        if (customTags.isNotEmpty()) {
-            ListItem(
-                content = {
-                    Text(
-                        text = "Tags",
-                        style = ElementTheme.typography.fontBodyMdMedium,
-                    )
-                },
-            )
             customTags.forEach { tag ->
                 val checked = contextMenu.roomId.value in tag.roomIds
                 ListItem(
