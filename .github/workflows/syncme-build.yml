@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - syncme-ab-standard
+      - syncme-160-option3
     paths:
       - '.github/syncme-release-trigger.txt'
 
