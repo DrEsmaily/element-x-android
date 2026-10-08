@@ -194,7 +194,7 @@ private fun RowScope.RoomListMenuItems(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
         ) {
-            if (RoomListConfig.SHOW_INVITE_MENU_ITEM) {
+            if (false && RoomListConfig.SHOW_INVITE_MENU_ITEM) {
                 DropdownMenuItem(
                     onClick = {
                         showMenu = false
