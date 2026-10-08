@@ -114,6 +114,7 @@ fun ActionListView(
 ) {
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
+        skipPartiallyExpanded = true,
     )
     val coroutineScope = rememberCoroutineScope()
     val targetItem = (state.target as? ActionListState.Target.Success)?.event
