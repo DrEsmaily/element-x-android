@@ -36,6 +36,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.movableContentOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -44,6 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
@@ -204,6 +207,7 @@ fun TimelineItemEventRow(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
+    val bubbleWidthPx = remember { mutableIntStateOf(0) }
 
     val onContentClick = if (event.mustBeProtected()) {
         // In this case, let the content handle the click
@@ -278,6 +282,7 @@ fun TimelineItemEventRow(
                                 state = state.draggableState,
                             ),
                         eventSink = eventSink,
+                        onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
                         eventContentView = eventContentView,
                     )
                 }
@@ -297,6 +302,7 @@ fun TimelineItemEventRow(
                 onReactionLongClick = { emoji -> onReactionLongClick(emoji, event) },
                 onMoreReactionsClick = { onMoreReactionsClick(event) },
                 eventSink = eventSink,
+                onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
                 eventContentView = eventContentView,
             )
         }
@@ -332,11 +338,24 @@ fun TimelineItemEventRow(
                 val uploadedBytes = totalBytes?.let {
                     (it.toDouble() * fraction.toDouble()).toLong().coerceIn(0L, it)
                 }
+                val bubbleWidth = with(LocalDensity.current) { bubbleWidthPx.intValue.toDp() }
+                val edgePadding = if (event.isMine) {
+                    Modifier.padding(end = 16.dp, top = 4.dp)
+                } else {
+                    val startMargin = if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
+                    Modifier.padding(start = startMargin, top = 4.dp)
+                }
                 Column(
                     modifier = Modifier
                         .align(if (event.isMine) Alignment.End else Alignment.Start)
-                        .padding(start = 16.dp, end = 16.dp, top = 4.dp)
-                        .fillMaxWidth(0.72f),
+                        .then(edgePadding)
+                        .then(
+                            if (bubbleWidthPx.intValue > 0) {
+                                Modifier.width(bubbleWidth)
+                            } else {
+                                Modifier.fillMaxWidth(MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO)
+                            }
+                        ),
                 ) {
                     Text(
                         text = if (totalBytes != null && uploadedBytes != null) {
@@ -525,6 +544,7 @@ private fun TimelineItemEventRowContent(
     onReactionLongClick: (emoji: String) -> Unit,
     onMoreReactionsClick: (event: TimelineItem.Event) -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
+    onBubbleWidthChanged: (Int) -> Unit,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
@@ -588,6 +608,7 @@ private fun TimelineItemEventRowContent(
         )
         MessageEventBubble(
             modifier = Modifier
+                .onSizeChanged { onBubbleWidthChanged(it.width) }
                 .constrainAs(message) {
                     val topMargin = if (bubbleState.cutTopStart) {
                         NEGATIVE_MARGIN_FOR_BUBBLE
