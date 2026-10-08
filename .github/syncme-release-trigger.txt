@@ -8,3 +8,5 @@ Release stable Build 160 with Option 3 (#1B2028) colors only. No UI performance 
 Release after #163: SyncMe-branded single-login onboarding; hide space UI and room space controls.
 
 Build full-screen tags manager with icons, rename, clear, delete and scroll restoration.
+
+Explicit release after branch workflow registration.
