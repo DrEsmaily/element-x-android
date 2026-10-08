@@ -18,14 +18,22 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -33,6 +41,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,6 +53,7 @@ import androidx.compose.ui.zIndex
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.compound.tokens.generated.CompoundIcons
 import io.element.android.features.home.impl.R
+import io.element.android.libraries.preferences.api.store.CustomRoomTag
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.Icon
@@ -69,6 +79,8 @@ fun RoomListFiltersView(
 
     var scrollToStart by remember { mutableIntStateOf(0) }
     val lazyListState = rememberLazyListState()
+    var showTagManager by rememberSaveable { mutableStateOf(false) }
+    var newTagName by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(scrollToStart) {
         // Scroll until the first item start to be displayed
         // Since all items have different size, there is no way to compute the amount of
@@ -128,7 +140,6 @@ fun RoomListFiltersView(
                     onClick = {
                         previousFilters.value = state.selectedFilters()
                         onToggleFilter(it)
-                        // When selecting a filter, we want to scroll to the start of the list
                         if (filterWithSelection.isSelected.not()) {
                             scrollToStart++
                         }
@@ -136,6 +147,90 @@ fun RoomListFiltersView(
                 )
             }
         }
+        state.customTags.forEach { tag ->
+            item("custom_tag_${tag.id}") {
+                RoomListCustomTagView(
+                    tag = tag,
+                    selected = state.activeCustomTagId == tag.id,
+                    onClick = {
+                        state.eventSink(RoomListFiltersEvent.SelectCustomTag(tag.id))
+                        scrollToStart++
+                    },
+                )
+            }
+        }
+        item("manage_custom_tags") {
+            FilterChip(
+                selected = false,
+                onClick = { showTagManager = true },
+                modifier = Modifier.height(32.dp),
+                shape = CircleShape,
+                label = {
+                    Text(
+                        text = "+",
+                        style = ElementTheme.typography.fontBodyMdRegular,
+                    )
+                },
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = false,
+                    borderColor = ElementTheme.colors.borderInteractiveSecondary,
+                ),
+            )
+        }
+    }
+
+    if (showTagManager) {
+        AlertDialog(
+            onDismissRequest = { showTagManager = false },
+            title = { androidx.compose.material3.Text("Manage tags") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = newTagName,
+                        onValueChange = { newTagName = it.take(32) },
+                        singleLine = true,
+                        label = { androidx.compose.material3.Text("New tag") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    state.customTags.forEach { tag ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            androidx.compose.material3.Text(
+                                text = tag.name,
+                                modifier = Modifier.weight(1f),
+                            )
+                            IconButton(
+                                onClick = { state.eventSink(RoomListFiltersEvent.DeleteCustomTag(tag.id)) },
+                            ) {
+                                Icon(
+                                    imageVector = CompoundIcons.Delete(),
+                                    contentDescription = "Delete tag",
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = newTagName.isNotBlank(),
+                    onClick = {
+                        state.eventSink(RoomListFiltersEvent.CreateCustomTag(newTagName))
+                        newTagName = ""
+                    },
+                ) {
+                    androidx.compose.material3.Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTagManager = false }) {
+                    androidx.compose.material3.Text("Done")
+                }
+            },
+        )
     }
 }
 
@@ -199,6 +294,54 @@ private fun RoomListFilterView(
         label = {
             Text(
                 text = stringResource(id = roomListFilter.stringResource),
+                style = ElementTheme.typography.fontBodyMdRegular,
+            )
+        },
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = selected,
+            borderColor = borderColour.value,
+        ),
+    )
+}
+
+@Composable
+private fun RoomListCustomTagView(
+    tag: CustomRoomTag,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val background = animateColorAsState(
+        targetValue = if (selected) ElementTheme.colors.bgActionPrimaryRest else ElementTheme.colors.bgCanvasDefault,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "custom tag chip background",
+    )
+    val textColour = animateColorAsState(
+        targetValue = if (selected) ElementTheme.colors.textOnSolidPrimary else ElementTheme.colors.textPrimary,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "custom tag chip text",
+    )
+    val borderColour = animateColorAsState(
+        targetValue = if (selected) Color.Transparent else ElementTheme.colors.borderInteractiveSecondary,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "custom tag chip border",
+    )
+
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        modifier = modifier.height(32.dp),
+        shape = CircleShape,
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = background.value,
+            selectedContainerColor = background.value,
+            labelColor = textColour.value,
+            selectedLabelColor = textColour.value,
+        ),
+        label = {
+            Text(
+                text = tag.name,
                 style = ElementTheme.typography.fontBodyMdRegular,
             )
         },
