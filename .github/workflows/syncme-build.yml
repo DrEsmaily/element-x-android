@@ -106,6 +106,16 @@ jobs:
             app/build/outputs/apk/gplay/release/*-universal-release.apk
             build-checkpoint/*.txt
 
+      - name: Upload smaller ARM64 APK and checkpoint
+        if: success()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: SyncMe-ARM64-release-${{ github.run_number }}-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            app/build/outputs/apk/gplay/release/*arm64-v8a*release.apk
+            build-checkpoint/*.txt
+
       - name: Preserve checkpoint for failed builds
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
