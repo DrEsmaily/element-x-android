@@ -276,7 +276,7 @@ private fun SyncMeTagManager(
                         HorizontalDivider()
                         androidx.compose.material3.Text("Custom tags", style = MaterialTheme.typography.titleMedium)
                         tags.forEach { tag ->
-                            TagManagerRow("TAG", tag.name, "${tag.roomIds.size} chats", {
+                            TagManagerRow("TAG", tag.name, "", {
                                 selectedId = tag.id
                                 page = "details"
                             })
@@ -499,13 +499,6 @@ private fun RoomListCustomTagView(
             labelColor = textColour.value,
             selectedLabelColor = textColour.value,
         ),
-        leadingIcon = {
-            Image(
-                painter = painterResource(id = R.drawable.syncme_tag_outline),
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-        },
         label = {
             Text(
                 text = tag.name,
