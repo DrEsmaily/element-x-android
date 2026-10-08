@@ -55,8 +55,9 @@ fun rememberLoggedInFlowTransitionHandler(
     val slider = rememberBackstackSlider<LoggedInFlowNode.NavTarget>(
         transitionSpec = { tween(durationMillis = 150) },
     )
+    // Room entry/exit should feel immediate; preserve the existing 150ms slide for menus.
     val fader = rememberBackstackFader<LoggedInFlowNode.NavTarget>(
-        transitionSpec = { tween(durationMillis = 150) },
+        transitionSpec = { tween(durationMillis = 90) },
     )
     return remember(backstack, slider, fader) {
         LoggedInFlowTransitionHandler(backstack, slider, fader)
