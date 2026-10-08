@@ -641,6 +641,7 @@ private fun TimelineItemEventRowContent(
             onLongClick = onLongClick,
             customBackgroundColor = dangerousContentBubbleColor,
             borderColor = borderColor,
+            allowFullContentWidth = uploadBubbleMinWidth != null,
         ) {
             MessageEventBubbleContent(
                 event = event,
