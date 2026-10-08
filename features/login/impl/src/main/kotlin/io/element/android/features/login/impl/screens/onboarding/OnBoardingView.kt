@@ -11,6 +11,8 @@ package io.element.android.features.login.impl.screens.onboarding
 import androidx.compose.foundation.Image
 import android.widget.ImageView
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -195,48 +197,66 @@ private fun AddOtherAccountScaffold(
 
 @Composable
 private fun OnBoardingContent(state: OnBoardingState) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = BiasAlignment(
-                horizontalBias = 0f,
-                verticalBias = -0.4f
-            )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = CenterHorizontally,
         ) {
-            // Display the installed SyncMe app icon rather than the upstream Element symbol.
+            // Use the full-resolution SyncMe artwork bundled as drawable-nodpi.
+            // The launcher icon supplied by PackageManager may be a density-scaled
+            // adaptive-icon raster and visibly blurry when enlarged.
             AndroidView(
-                modifier = Modifier.height(160.dp).fillMaxWidth(),
-                factory = { context -> ImageView(context).apply {
-                    setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
-                    scaleType = ImageView.ScaleType.FIT_CENTER
-                    contentDescription = "SyncMe"
-                } },
+                modifier = Modifier.height(132.dp).fillMaxWidth(),
+                factory = { context ->
+                    ImageView(context).apply {
+                        val fullResolution = context.resources.getIdentifier(
+                            "syncme_launcher", "drawable", context.packageName
+                        )
+                        if (fullResolution != 0) {
+                            setImageResource(fullResolution)
+                        } else {
+                            setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
+                        }
+                        scaleType = ImageView.ScaleType.FIT_CENTER
+                        adjustViewBounds = true
+                        contentDescription = "SyncMe"
+                    }
+                },
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "SyncMe",
+                color = ElementTheme.colors.textPrimary,
+                style = ElementTheme.typography.fontHeadingLgBold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = "Stay connected, Stay private",
+                color = ElementTheme.colors.textPrimary,
+                style = ElementTheme.typography.fontBodyLgMedium,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = "Messaging made simple",
+                color = ElementTheme.colors.textSecondary,
+                style = ElementTheme.typography.fontBodyMdRegular,
+                textAlign = TextAlign.Center,
             )
         }
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = BiasAlignment(
-                horizontalBias = 0f,
-                verticalBias = 0.6f
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalAlignment = CenterHorizontally,
-            ) {
-                Text(
-                    text = "SyncMe",
-                    color = ElementTheme.colors.textPrimary,
-                    style = ElementTheme.typography.fontHeadingLgBold,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-            }
-        }
+        Text(
+            text = "by 0x07c4",
+            color = ElementTheme.colors.textSecondary,
+            style = ElementTheme.typography.fontBodySmRegular,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 8.dp),
+        )
     }
 }
 
