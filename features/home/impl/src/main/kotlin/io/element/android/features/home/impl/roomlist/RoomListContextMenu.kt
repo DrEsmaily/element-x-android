@@ -181,9 +181,7 @@ private fun RoomListModalBottomSheetContent(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     },
-                    leadingContent = ListItemContent.Icon(
-                        iconSource = IconSource.Vector(CompoundIcons.Folder())
-                    ),
+                    leadingContent = ListItemContent.Text(tag.icon),
                     trailingContent = ListItemContent.Switch(
                         checked = checked,
                     ),
