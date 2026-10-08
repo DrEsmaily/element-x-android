@@ -194,11 +194,9 @@ class HomeFlowNode(
                     // Don't block the screen transition while waiting for a room instance.
                     // If it is already hot in memory, use it; otherwise navigate immediately and
                     // let RoomFlowNode resolve/load the room behind the newly opened screen.
-                    val joinedRoom = runCatchingExceptions {
-                        withTimeoutOrNull(50.milliseconds) {
-                            matrixClient.getJoinedRoom(roomId)
-                        }
-                    }.getOrNull()
+                    // Begin navigation immediately; RoomFlowNode resolves the room
+                    // after the screen is attached. Even a 50ms lookup can delay taps.
+                    val joinedRoom = null
 
                     if (isActive) {
                         callback.navigateToRoom(roomId = roomId, eventId = eventId, joinedRoom = joinedRoom)
