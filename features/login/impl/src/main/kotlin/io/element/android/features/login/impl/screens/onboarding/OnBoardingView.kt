@@ -287,7 +287,7 @@ private fun OnBoardingButtons(
         Text(
             text = "by 0x07c4",
             color = ElementTheme.colors.textSecondary,
-            style = ElementTheme.typography.fontBodySmRegular,
+            style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
         )
