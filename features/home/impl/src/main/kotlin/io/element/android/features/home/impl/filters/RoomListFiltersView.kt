@@ -103,11 +103,14 @@ fun RoomListFiltersView(
         )
     }
     val previousFilters = remember { mutableStateOf(listOf<RoomListFilter>()) }
-    LaunchedEffect(state.activeCustomTagId, state.customTags, state.filterSelectionStates.size) {
-        val selectedTagIndex = state.customTags.indexOfFirst { it.id == state.activeCustomTagId }
-        if (selectedTagIndex >= 0) {
-            // The clear button and built-in filters precede the custom chips.
-            lazyListState.animateScrollToItem(1 + state.filterSelectionStates.size + selectedTagIndex)
+    // Put the selected custom tag first among custom chips, just like built-in
+    // filters place the selected chip at the leading edge of their group.
+    val orderedCustomTags = state.customTags.sortedBy { if (it.id == state.activeCustomTagId) 0 else 1 }
+    LaunchedEffect(state.activeCustomTagId) {
+        if (state.activeCustomTagId != null) {
+            // Jump once to the selected chip's new leading slot. The old animated
+            // scroll raced the LazyRow item animation and looked like a rewind.
+            lazyListState.scrollToItem(1 + state.filterSelectionStates.size)
         }
     }
     LazyRow(
@@ -152,7 +155,7 @@ fun RoomListFiltersView(
                 )
             }
         }
-        state.customTags.forEach { tag ->
+        orderedCustomTags.forEach { tag ->
             item("custom_tag_${tag.id}") {
                 RoomListCustomTagView(
                     tag = tag,
