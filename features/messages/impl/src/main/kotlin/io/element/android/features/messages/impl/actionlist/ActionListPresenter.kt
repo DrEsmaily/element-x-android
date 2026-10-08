@@ -50,6 +50,7 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.room.BaseRoom
 import io.element.android.libraries.matrix.api.timeline.Timeline
+import io.element.android.libraries.matrix.api.timeline.item.event.LocalEventSendState
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -243,7 +244,12 @@ class DefaultActionListPresenter(
             if (!timelineItem.isMine) {
                 add(TimelineItemAction.ReportContent)
             }
-            if (canRedact) {
+            val isPendingMediaUpload =
+                timelineItem.eventId == null &&
+                    timelineItem.localSendState is LocalEventSendState.Sending.MediaWithProgress
+            if (isPendingMediaUpload) {
+                add(TimelineItemAction.CancelSending)
+            } else if (canRedact) {
                 add(TimelineItemAction.Redact)
             }
         }
