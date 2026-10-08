@@ -289,7 +289,6 @@ fun TimelineItemEventRow(
                             ),
                         eventSink = eventSink,
                         onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
-                uploadBubbleMinWidth = uploadBubbleMinWidth,
                         uploadBubbleMinWidth = uploadBubbleMinWidth,
                         eventContentView = eventContentView,
                     )
@@ -311,6 +310,7 @@ fun TimelineItemEventRow(
                 onMoreReactionsClick = { onMoreReactionsClick(event) },
                 eventSink = eventSink,
                 onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
+                uploadBubbleMinWidth = uploadBubbleMinWidth,
                 eventContentView = eventContentView,
             )
         }
