@@ -43,10 +43,10 @@ private class LoginFlowTransitionHandler(
 @Composable
 fun rememberLoginFlowTransitionHandler(): ModifierTransitionHandler<LoginFlowNode.NavTarget, BackStack.State> {
     val slider = rememberBackstackSlider<LoginFlowNode.NavTarget>(
-        transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
+        transitionSpec = { spring(stiffness = Spring.StiffnessMedium) },
     )
     val fader = rememberBackstackFader<LoginFlowNode.NavTarget>(
-        transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
+        transitionSpec = { spring(stiffness = Spring.StiffnessMedium) },
     )
     return rememberDelegateTransitionHandler {
         LoginFlowTransitionHandler(slider, fader)
