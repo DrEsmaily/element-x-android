@@ -210,6 +210,8 @@ fun TimelineItemEventRow(
     val coroutineScope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val bubbleWidthPx = remember { mutableIntStateOf(0) }
+    val naturalBubbleWidthPx = remember(event.uniqueId) { mutableIntStateOf(0) }
+    val availableRowWidthPx = remember { mutableIntStateOf(0) }
     // Size the upload bubble to the actual one-line status text, never a fixed 300dp.
     // Only small attachments are expanded; large media keeps its natural width.
     val progressTextMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
@@ -219,14 +221,22 @@ fun TimelineItemEventRow(
         val status = if (contentSize != null && sent != null) {
             "Uploading ${(fraction * 100f).roundToInt()}%  ·  ${formatUploadBytes(sent)} / ${formatUploadBytes(contentSize)}"
         } else "Uploading ${(fraction * 100f).roundToInt()}%"
+        // Reserve enough width for the longest final percentage/byte count so the
+        // media does not visibly change width throughout one upload.
+        val widestStatus = if (contentSize != null) {
+            "Uploading 100%  ·  ${formatUploadBytes(contentSize)} / ${formatUploadBytes(contentSize)}"
+        } else status
         val measuredWidth = progressTextMeasurer.measure(
-            text = status,
+            text = widestStatus,
             style = ElementTheme.typography.fontBodySmMedium,
             maxLines = 1,
             softWrap = false,
         ).size.width
         with(LocalDensity.current) {
-            minOf(measuredWidth.toDp() + 4.dp, (LocalConfiguration.current.screenWidthDp - 48).coerceAtLeast(180).dp)
+            // Actual measured timeline space, not global display size; this also
+            // handles landscape, tablets, multi-window and font scaling.
+            val availableWidth = availableRowWidthPx.intValue.toDp() - 32.dp
+            minOf(measuredWidth.toDp() + 8.dp, availableWidth.coerceAtLeast(1.dp))
         }
     }
 
@@ -257,6 +267,7 @@ fun TimelineItemEventRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .onSizeChanged { availableRowWidthPx.intValue = it.width }
             .semantics { customActions = accessibilityActions }
     ) {
         if (event.groupPosition.isNew()) {
@@ -303,8 +314,11 @@ fun TimelineItemEventRow(
                                 state = state.draggableState,
                             ),
                         eventSink = eventSink,
-                        onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
-                        bubbleWidthPx = bubbleWidthPx.intValue,
+                        onBubbleWidthChanged = {
+                            bubbleWidthPx.intValue = it
+                            if (naturalBubbleWidthPx.intValue == 0) naturalBubbleWidthPx.intValue = it
+                        },
+                        bubbleWidthPx = naturalBubbleWidthPx.intValue,
                         uploadBubbleMinWidth = uploadBubbleMinWidth,
                         eventContentView = eventContentView,
                     )
@@ -325,8 +339,11 @@ fun TimelineItemEventRow(
                 onReactionLongClick = { emoji -> onReactionLongClick(emoji, event) },
                 onMoreReactionsClick = { onMoreReactionsClick(event) },
                 eventSink = eventSink,
-                onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
-                        bubbleWidthPx = bubbleWidthPx.intValue,
+                onBubbleWidthChanged = {
+                            bubbleWidthPx.intValue = it
+                            if (naturalBubbleWidthPx.intValue == 0) naturalBubbleWidthPx.intValue = it
+                        },
+                        bubbleWidthPx = naturalBubbleWidthPx.intValue,
                 uploadBubbleMinWidth = uploadBubbleMinWidth,
                 eventContentView = eventContentView,
             )
