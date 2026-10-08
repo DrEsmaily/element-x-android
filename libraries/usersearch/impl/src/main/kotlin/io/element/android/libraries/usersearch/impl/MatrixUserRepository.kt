@@ -54,6 +54,18 @@ class MatrixUserRepository(
             .map { UserSearchResult(it) }
             .toMutableList()
 
+        // A short local username should work even if the server's public user
+        // directory does not list the account. Never invent an unresolved user.
+        if (!query.startsWith("@") && query.matches(Regex("[A-Za-z0-9._=\\/-]+"))) {
+            val localDomain = client.sessionId.value.substringAfter(':', "")
+            if (localDomain.isNotBlank()) {
+                val localId = UserId("@$query:$localDomain")
+                if (!client.isMe(localId) && results.none { it.matrixUser.userId == localId }) {
+                    dataSource.getProfile(localId)?.let { results.add(0, UserSearchResult(it)) }
+                }
+            }
+        }
+
         // If the query is another user's MXID and the result doesn't contain that user ID, query the profile information explicitly
         if (shouldQueryProfile && results.none { it.matrixUser.userId.value == query }) {
             results.add(
