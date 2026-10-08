@@ -156,7 +156,7 @@ class RoomDetailsPresenter(
         val closeGroupError = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
         val myPowerLevel = roomInfo.powerLevelOf(room.sessionId)
         val roomMemberList = membersState.roomMembers().orEmpty()
-        val canCloseGroup = !isDm && roomMemberList.any { it.userId.value != room.sessionId.value } &&
+        val canCloseGroup = !isDm && permissions.canEditRolesAndPermissions &&
             roomMemberList.filter { it.userId.value != room.sessionId.value && it.membership in listOf(RoomMembershipState.JOIN, RoomMembershipState.INVITE, RoomMembershipState.KNOCK) }
                 .all { it.powerLevel < myPowerLevel }
 
