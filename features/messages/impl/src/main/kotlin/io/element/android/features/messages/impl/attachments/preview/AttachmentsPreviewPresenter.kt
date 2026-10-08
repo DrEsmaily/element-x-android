@@ -319,7 +319,10 @@ class AttachmentsPreviewPresenter(
                     )
                 }
                 AttachmentsPreviewEvent.CancelAndClearSendState -> {
-                    // Cancel media sending
+                    // Cancel preparation immediately. Actual queued Matrix media sends are cancelled
+                    // from the timeline action via their transactionId, not only this UI coroutine.
+                    preprocessMediaJob?.cancel()
+                    preprocessMediaJob = null
                     ongoingSendAttachmentJob.value?.let {
                         it.cancel()
                         ongoingSendAttachmentJob.value = null
