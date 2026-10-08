@@ -58,9 +58,7 @@ import io.element.android.features.home.impl.R
 import io.element.android.features.home.impl.filters.RoomListFiltersState
 import io.element.android.features.home.impl.filters.RoomListFiltersView
 import io.element.android.features.home.impl.filters.aRoomListFiltersState
-import io.element.android.features.home.impl.spacefilters.SpaceFiltersEvent
 import io.element.android.features.home.impl.spacefilters.SpaceFiltersState
-import io.element.android.features.home.impl.spacefilters.aSelectedSpaceFiltersState
 import io.element.android.features.home.impl.spacefilters.anUnselectedSpaceFiltersState
 import io.element.android.libraries.designsystem.atomic.atoms.RedIndicatorAtom
 import io.element.android.libraries.designsystem.components.TopAppBarScrollBehaviorLayout
@@ -124,28 +122,11 @@ fun HomeTopBar(
                 scrolledContainerColor = Color.Transparent,
             ),
             title = {
-                val displayTitle = when (selectedNavigationItem) {
-                    HomeNavigationBarItem.Chats -> {
-                        when (spaceFiltersState) {
-                            is SpaceFiltersState.Selected -> spaceFiltersState.selectedFilter.spaceRoom.displayName
-                            else -> "SyncMe"
-                        }
-                    }
-                    HomeNavigationBarItem.Spaces -> null
-                }
-                displayTitle?.let {
-                    val style = when (spaceFiltersState) {
-                        // Space name
-                        is SpaceFiltersState.Selected -> ElementTheme.typography.fontHeadingSmMedium
-                        // "Chats"
-                        else -> ElementTheme.typography.fontHeadingLgBold
-                    }
-                    AdaptativeTitle(
-                        title = displayTitle,
-                        style = style,
-                        twoLinesStyle = ElementTheme.typography.fontHeadingSmMedium,
-                    )
-                }
+                AdaptativeTitle(
+                    title = "SyncMe",
+                    style = ElementTheme.typography.fontHeadingLgBold,
+                    twoLinesStyle = ElementTheme.typography.fontHeadingSmMedium,
+                )
             },
             navigationIcon = {
                 NavigationIcon(
@@ -162,7 +143,6 @@ fun HomeTopBar(
                         onToggleSearch = onToggleSearch,
                         onMenuActionClick = onMenuActionClick,
                         canReportBug = canReportBug,
-                        spaceFiltersState = spaceFiltersState,
                     )
                 }
             },
@@ -190,7 +170,6 @@ private fun RowScope.RoomListMenuItems(
     onToggleSearch: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
     canReportBug: Boolean,
-    spaceFiltersState: SpaceFiltersState,
 ) {
     IconButton(
         onClick = onToggleSearch,
@@ -200,7 +179,6 @@ private fun RowScope.RoomListMenuItems(
             contentDescription = stringResource(CommonStrings.action_search),
         )
     }
-    SpaceFilterButton(spaceFiltersState = spaceFiltersState)
     if (RoomListConfig.HAS_DROP_DOWN_MENU) {
         var showMenu by remember { mutableStateOf(false) }
         IconButton(
@@ -248,39 +226,6 @@ private fun RowScope.RoomListMenuItems(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun SpaceFilterButton(
-    spaceFiltersState: SpaceFiltersState,
-) {
-    if (spaceFiltersState == SpaceFiltersState.Disabled) return
-
-    fun onClick() {
-        when (spaceFiltersState) {
-            is SpaceFiltersState.Unselected -> spaceFiltersState.eventSink(SpaceFiltersEvent.Unselected.ShowFilters)
-            is SpaceFiltersState.Selected -> spaceFiltersState.eventSink(SpaceFiltersEvent.Selected.ClearSelection)
-            else -> Unit
-        }
-    }
-
-    val isSelected = spaceFiltersState is SpaceFiltersState.Selected
-    IconButton(
-        onClick = ::onClick,
-        colors = if (isSelected) {
-            IconButtonDefaults.iconButtonColors(
-                containerColor = ElementTheme.colors.bgActionPrimaryRest,
-                contentColor = ElementTheme.colors.iconOnSolidPrimary,
-            )
-        } else {
-            IconButtonDefaults.iconButtonColors()
-        },
-    ) {
-        Icon(
-            imageVector = CompoundIcons.Filter(),
-            contentDescription = stringResource(R.string.screen_roomlist_your_spaces),
-        )
     }
 }
 
