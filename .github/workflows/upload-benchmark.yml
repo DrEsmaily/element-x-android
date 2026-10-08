@@ -1,10 +1,10 @@
-name: Upload Benchmark Play SDK
+name: Upload Benchmark Nightly SDK
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - upload-benchmark-play-sdk
+      - upload-benchmark-nightly-sdk
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
         shell: bash
         run: |
           test "$(grep -c 'getByName("release") {' app/build.gradle.kts)" -eq 1
-          sed -i '/getByName("release") {/a\            applicationIdSuffix = ".uploadbench"' app/build.gradle.kts
+          sed -i '/getByName("release") {/a\            applicationIdSuffix = ".uploadbenchnightly"' app/build.gradle.kts
           git diff --check
 
       - name: Use JDK 21
@@ -44,6 +44,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: upload-benchmark-play-sdk-${{ github.run_number }}-${{ github.sha }}
+          name: upload-benchmark-nightly-sdk-${{ github.run_number }}-${{ github.sha }}
           if-no-files-found: error
           path: app/build/outputs/apk/gplay/release/*-universal-release.apk
