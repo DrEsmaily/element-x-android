@@ -190,12 +190,12 @@ class InMemoryAppPreferencesStore(
 
     override fun getActiveCustomRoomTagIdFlow(): Flow<String?> = activeCustomRoomTagId
 
-    override suspend fun createCustomRoomTag(name: String): String? {
+    override suspend fun createCustomRoomTag(name: String, icon: String): String? {
         val normalized = name.trim()
         if (normalized.isBlank()) return null
         if (customRoomTags.value.any { it.name.equals(normalized, ignoreCase = true) }) return null
         val id = java.util.UUID.randomUUID().toString()
-        customRoomTags.value = customRoomTags.value + CustomRoomTag(id, normalized, emptySet())
+        customRoomTags.value = customRoomTags.value + CustomRoomTag(id, normalized, emptySet(), icon)
         return id
     }
 
