@@ -8,6 +8,7 @@
 
 package io.element.android.features.messages.impl.timeline.components.event
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -36,7 +37,9 @@ fun TimelineItemFileView(
         filename = content.filename,
         fileExtensionAndSize = content.fileExtensionAndSize,
         onContentLayoutChange = onContentLayoutChange,
-        modifier = modifier,
+        // In a bubble widened for upload progress, an uncaptioned file should
+        // occupy the bubble width and keep its icon/text at the left edge.
+        modifier = if (content.caption.isNullOrBlank()) modifier.fillMaxWidth() else modifier,
         contentValidationValue = contentValidationValue,
     )
 }
