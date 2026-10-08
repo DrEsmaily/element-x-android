@@ -273,15 +273,6 @@ private fun OnBoardingContent(state: OnBoardingState) {
                 textAlign = TextAlign.Center,
             )
         }
-        Text(
-            text = "by 0x07c4",
-            color = ElementTheme.colors.textSecondary,
-            style = ElementTheme.typography.fontBodyMdRegular,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 8.dp),
-        )
     }
 }
 
@@ -331,6 +322,14 @@ private fun OnBoardingButtons(
             },
             enabled = defaultAccountProvider == null || state.submitEnabled || isLoading,
             modifier = Modifier.fillMaxWidth().testTag(TestTags.onBoardingSignIn),
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+            text = "by 0x07c4",
+            color = ElementTheme.colors.textSecondary,
+            style = ElementTheme.typography.fontBodyMdRegular,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
         )
     }
 }
