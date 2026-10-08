@@ -312,7 +312,7 @@ private fun SyncMeTagManager(
                             }
                         }
                         androidx.compose.material3.Text("Preview")
-                        TagManagerRow(chosenIcon, draft.ifBlank { "Tag name" }, "0 chats", {})
+                        TagManagerRow(chosenIcon, draft.ifBlank { "Tag name" }, "", {})
                         Spacer(Modifier.weight(1f))
                         Button(
                             onClick = {
