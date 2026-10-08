@@ -8,6 +8,10 @@
 
 package io.element.android.features.home.impl.roomlist
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -181,7 +185,13 @@ private fun RoomListModalBottomSheetContent(
                             style = MaterialTheme.typography.bodyLarge,
                         )
                     },
-                    leadingContent = ListItemContent.Text(tag.icon),
+                    leadingContent = ListItemContent.Custom { _ ->
+                        Image(
+                            painter = painterResource(id = R.drawable.syncme_tag_outline),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    },
                     trailingContent = ListItemContent.Switch(
                         checked = checked,
                     ),
