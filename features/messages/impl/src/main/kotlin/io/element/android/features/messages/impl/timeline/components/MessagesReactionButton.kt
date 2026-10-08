@@ -10,6 +10,7 @@ package io.element.android.features.messages.impl.timeline.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -61,9 +62,14 @@ fun MessagesReactionButton(
     modifier: Modifier = Modifier,
 ) {
     val buttonColor = if (content.isHighlighted) {
-        ElementTheme.colors.bgSubtlePrimary
+        ElementTheme.colors.bgAccentSelected
     } else {
-        ElementTheme.colors.bgSubtleSecondary
+        ElementTheme.colors.bgSubtleTertiary
+    }
+    val buttonBorderColor = if (content.isHighlighted) {
+        ElementTheme.colors.borderAccentSubtle
+    } else {
+        ElementTheme.colors.borderInteractiveSecondary
     }
 
     val a11yText = when (content) {
@@ -83,6 +89,7 @@ fun MessagesReactionButton(
             .background(Color.Transparent)
             .padding(vertical = 2.dp, horizontal = 2.dp)
             .clip(RoundedCornerShape(12.dp))
+            .border(1.dp, buttonBorderColor, RoundedCornerShape(12.dp))
             .combinedClickable(
                 onClick = onClick,
                 onClickLabel = (content as? MessagesReactionsButtonContent.Reaction)?.let {
