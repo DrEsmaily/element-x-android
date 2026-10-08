@@ -18,6 +18,6 @@ import com.bumble.appyx.navmodel.backstack.transitionhandler.rememberBackstackSl
 @Composable
 fun <NavTarget> rememberDefaultTransitionHandler(): ModifierTransitionHandler<NavTarget, BackStack.State> {
     return rememberBackstackSlider(
-        transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
+        transitionSpec = { spring(stiffness = Spring.StiffnessMedium) },
     )
 }
