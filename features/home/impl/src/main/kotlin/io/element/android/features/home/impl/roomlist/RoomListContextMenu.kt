@@ -32,6 +32,7 @@ import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.ModalBottomSheet
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.preferences.api.store.CustomRoomTag
 import io.element.android.libraries.ui.strings.CommonStrings
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,6 +40,7 @@ import io.element.android.libraries.ui.strings.CommonStrings
 fun RoomListContextMenu(
     contextMenu: RoomListState.ContextMenu.Shown,
     canReportRoom: Boolean,
+    customTags: List<CustomRoomTag>,
     eventSink: (RoomListEvent.ContextMenuEvent) -> Unit,
     onRoomSettingsClick: (roomId: RoomId) -> Unit,
     onReportRoomClick: (roomId: RoomId) -> Unit
@@ -50,6 +52,10 @@ fun RoomListContextMenu(
         RoomListModalBottomSheetContent(
             contextMenu = contextMenu,
             canReportRoom = canReportRoom,
+            customTags = customTags,
+            onToggleTag = { tagId ->
+                eventSink(RoomListEvent.ToggleRoomCustomTag(contextMenu.roomId, tagId))
+            },
             onRoomMarkReadClick = {
                 eventSink(RoomListEvent.HideContextMenu)
                 eventSink(RoomListEvent.MarkAsRead(contextMenu.roomId))
@@ -81,6 +87,8 @@ fun RoomListContextMenu(
 private fun RoomListModalBottomSheetContent(
     contextMenu: RoomListState.ContextMenu.Shown,
     canReportRoom: Boolean,
+    customTags: List<CustomRoomTag>,
+    onToggleTag: (String) -> Unit,
     onRoomSettingsClick: () -> Unit,
     onLeaveRoomClick: () -> Unit,
     onFavoriteChange: (isFavorite: Boolean) -> Unit,
@@ -153,6 +161,34 @@ private fun RoomListModalBottomSheetContent(
                 onFavoriteChange(!contextMenu.isFavorite)
             },
         )
+        if (customTags.isNotEmpty()) {
+            ListItem(
+                content = {
+                    Text(
+                        text = "Tags",
+                        style = ElementTheme.typography.fontBodyMdMedium,
+                    )
+                },
+            )
+            customTags.forEach { tag ->
+                val checked = contextMenu.roomId.value in tag.roomIds
+                ListItem(
+                    content = {
+                        Text(
+                            text = tag.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                    },
+                    leadingContent = ListItemContent.Icon(
+                        iconSource = IconSource.Vector(CompoundIcons.Tag())
+                    ),
+                    trailingContent = ListItemContent.Switch(
+                        checked = checked,
+                    ),
+                    onClick = { onToggleTag(tag.id) },
+                )
+            }
+        }
         ListItem(
             content = {
                 Text(
@@ -204,6 +240,7 @@ internal fun RoomListContextMenuPreview(
     RoomListContextMenu(
         contextMenu = contextMenu,
         canReportRoom = true,
+        customTags = emptyList(),
         onRoomSettingsClick = {},
         onReportRoomClick = {},
         eventSink = {},
