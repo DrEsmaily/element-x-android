@@ -43,10 +43,10 @@ private class FaderOrSliderTransitionHandler<NavTarget>(
 @Composable
 fun <NavTarget> rememberFaderOrSliderTransitionHandler(): ModifierTransitionHandler<NavTarget, BackStack.State> {
     val slider = rememberBackstackSlider<NavTarget>(
-        transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
+        transitionSpec = { spring(stiffness = Spring.StiffnessMedium) },
     )
     val fader = rememberBackstackFader<NavTarget>(
-        transitionSpec = { spring(stiffness = Spring.StiffnessMediumLow) },
+        transitionSpec = { spring(stiffness = Spring.StiffnessMedium) },
     )
     return rememberDelegateTransitionHandler {
         FaderOrSliderTransitionHandler(slider, fader)
