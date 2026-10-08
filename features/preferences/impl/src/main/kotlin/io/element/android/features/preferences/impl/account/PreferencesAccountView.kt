@@ -53,11 +53,7 @@ fun PreferencesAccountView(
         )
         // General section
         GeneralSection(
-            state = state,
             onModerationAndSafetyClick = onModerationAndSafetyClick,
-            onOpenRageShake = onOpenRageShake,
-            onSignOutClick = onSignOutClick,
-            onDeactivateClick = onDeactivateClick,
         )
     }
 }
@@ -113,11 +109,7 @@ private fun ColumnScope.OtherSettingsSection(
 
 @Composable
 private fun ColumnScope.GeneralSection(
-    state: PreferencesAccountState,
     onModerationAndSafetyClick: () -> Unit,
-    onOpenRageShake: () -> Unit,
-    onSignOutClick: () -> Unit,
-    onDeactivateClick: () -> Unit,
 ) {
     HorizontalDivider()
     ListItem(
@@ -125,23 +117,8 @@ private fun ColumnScope.GeneralSection(
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Admin())),
         onClick = onModerationAndSafetyClick,
     )
-
-    // SyncMe intentionally hides the upstream "Report a problem" entry.
-    HorizontalDivider()
-    ListItem(
-        content = { Text(stringResource(id = CommonStrings.action_signout)) },
-        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Close())),
-        style = ListItemStyle.Destructive,
-        onClick = onSignOutClick,
-    )
-    if (state.canDeactivateAccount) {
-        ListItem(
-            content = { Text(stringResource(id = CommonStrings.action_delete_account)) },
-            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Delete())),
-            style = ListItemStyle.Destructive,
-            onClick = onDeactivateClick,
-        )
-    }
+    // Sign out and Delete account are intentionally rendered near the bottom of the root
+    // settings page, immediately above About, so destructive actions stay separated.
 }
 
 @PreviewsDayNight
