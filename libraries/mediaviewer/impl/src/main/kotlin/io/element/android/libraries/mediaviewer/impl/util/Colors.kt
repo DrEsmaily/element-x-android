@@ -10,8 +10,7 @@ package io.element.android.libraries.mediaviewer.impl.util
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import io.element.android.compound.theme.ElementTheme
 
 val bgCanvasWithTransparency: Color
     @Composable
-    get() = ElementTheme.colors.bgCanvasDefault.copy(alpha = 0.6f)
+    get() = Color.Black.copy(alpha = 0.72f)
