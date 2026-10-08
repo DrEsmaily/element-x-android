@@ -47,9 +47,8 @@ class RoomListFiltersPresenter(
                 }
                 is RoomListFiltersEvent.CreateCustomTag -> {
                     coroutineScope.launch {
-                        appPreferencesStore.createCustomRoomTag(event.name)?.let { createdId ->
-                            appPreferencesStore.setActiveCustomRoomTagId(createdId)
-                        }
+                        // Creating a tag must not select or activate it.
+                        appPreferencesStore.createCustomRoomTag(event.name)
                     }
                 }
                 is RoomListFiltersEvent.DeleteCustomTag -> {
