@@ -34,9 +34,6 @@ data class RoomDetailsState(
     val dmOtherMemberDetailsState: UserProfileState?,
     val canEdit: Boolean,
     val canInvite: Boolean,
-    val canCloseGroup: Boolean,
-    val closingGroup: Boolean,
-    val closeGroupError: String?,
     val roomCallState: RoomCallState,
     val leaveRoomState: LeaveRoomState,
     val roomNotificationSettings: RoomNotificationSettings?,
@@ -56,7 +53,10 @@ data class RoomDetailsState(
     val roomVersion: String?,
     val roomHistoryVisibility: RoomHistoryVisibility,
     val hasNewContent: Boolean,
-    val eventSink: (RoomDetailsEvent) -> Unit
+    val eventSink: (RoomDetailsEvent) -> Unit,
+    val canCloseGroup: Boolean = false,
+    val closingGroup: Boolean = false,
+    val closeGroupError: String? = null,
 ) {
     val roomBadges = buildList {
         if (isEncrypted) {
