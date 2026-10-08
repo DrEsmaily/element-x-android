@@ -37,7 +37,7 @@ jobs:
       - name: Checkout SyncMe
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Make release installable beside other Element X builds
         shell: bash
@@ -59,9 +59,57 @@ jobs:
       - name: Build optimized SyncMe release APK
         run: ./gradlew :app:assembleGplayRelease -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
 
-      - name: Upload SyncMe release APK
+      - name: Generate full per-build continuation TXT
+        if: always()
+        shell: bash
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_NO: ${{ github.run_number }}
+          SHA: ${{ github.sha }}
+          JOB_RESULT: ${{ job.status }}
+        run: |
+          mkdir -p build-checkpoint
+          FILE="build-checkpoint/SyncMe-CHECKPOINT-${RUN_NO}-${SHA:0:9}.txt"
+          {
+            echo "SYNCME BUILD CONTINUATION CHECKPOINT"
+            echo "UTC timestamp: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+            echo "Run: https://github.com/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}"
+            echo "Build number: ${RUN_NO}"
+            echo "Branch: ${GITHUB_REF_NAME}"
+            echo "Commit: ${SHA}"
+            echo "Build job state: ${JOB_RESULT}"
+            echo "Build: :app:assembleGplayRelease, optimized Release, applicationIdSuffix=.syncmerelease"
+            echo "APK created: $(if compgen -G 'app/build/outputs/apk/gplay/release/*-universal-release.apk' >/dev/null; then echo yes; else echo no; fi)"
+            echo "Note: APK compilation does not validate runtime upload, room speed or UI."
+            echo
+            echo "=== MASTER REQUIREMENTS / CURRENT KNOWN STATUS ==="
+            cat .github/SYNCME_CONTINUATION_MASTER.txt
+            echo
+            echo "=== COMPLETE COMMIT HISTORY (OLDEST FIRST) ==="
+            git log --reverse --date=iso-strict --format='%H | %ad | %s' HEAD
+            echo
+            echo "=== CHANGED FILES SINCE LAST CONFIRMED SUCCESSFUL BUILD #77 ==="
+            git diff --name-status 79cc969595a26bbf4e8aa1919213a4d83512b293..HEAD || true
+            echo
+            echo "=== CONTINUE IN NEXT CHAT ==="
+            echo "Inspect this run's outcome and exact code state before claiming fixes."
+            echo "Priority: diagnose upload retry/stall/duplicate events; then room-opening responsiveness; then progress/bubbles/bottom-sheets/tag/black-theme regression testing."
+          } > "$FILE"
+
+      - name: Upload APK and checkpoint together
+        if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: SyncMe-release-apk-${{ github.run_number }}-${{ github.sha }}
           if-no-files-found: error
-          path: app/build/outputs/apk/gplay/release/*-universal-release.apk
+          path: |
+            app/build/outputs/apk/gplay/release/*-universal-release.apk
+            build-checkpoint/*.txt
+
+      - name: Preserve checkpoint for failed builds
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: SyncMe-failed-build-checkpoint-${{ github.run_number }}-${{ github.sha }}
+          if-no-files-found: warn
+          path: build-checkpoint/*.txt
