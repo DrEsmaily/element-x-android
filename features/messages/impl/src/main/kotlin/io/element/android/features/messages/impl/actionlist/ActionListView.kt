@@ -35,6 +35,7 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -117,6 +118,14 @@ fun ActionListView(
     )
     val coroutineScope = rememberCoroutineScope()
     val targetItem = (state.target as? ActionListState.Target.Success)?.event
+
+    // The default Material sheet can stop at its partially-expanded anchor, leaving
+    // the last message actions hidden on shorter devices. Expand after presentation.
+    LaunchedEffect(targetItem) {
+        if (targetItem != null) {
+            sheetState.expand()
+        }
+    }
 
     fun onItemActionClick(
         itemAction: TimelineItemAction
