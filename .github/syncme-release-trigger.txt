@@ -10,3 +10,5 @@ Release after #163: SyncMe-branded single-login onboarding; hide space UI and ro
 Build full-screen tags manager with icons, rename, clear, delete and scroll restoration.
 
 Explicit release after branch workflow registration.
+
+Final release dispatch marker for tags page workflow.
