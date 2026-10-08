@@ -7,9 +7,8 @@
 
 package io.element.android.libraries.architecture.appyx
 
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Transition
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.bumble.appyx.core.navigation.transition.ModifierTransitionHandler
@@ -43,10 +42,10 @@ private class FaderOrSliderTransitionHandler<NavTarget>(
 @Composable
 fun <NavTarget> rememberFaderOrSliderTransitionHandler(): ModifierTransitionHandler<NavTarget, BackStack.State> {
     val slider = rememberBackstackSlider<NavTarget>(
-        transitionSpec = { spring(stiffness = Spring.StiffnessMedium) },
+        transitionSpec = { tween(durationMillis = 150) },
     )
     val fader = rememberBackstackFader<NavTarget>(
-        transitionSpec = { spring(stiffness = Spring.StiffnessMedium) },
+        transitionSpec = { tween(durationMillis = 150) },
     )
     return rememberDelegateTransitionHandler {
         FaderOrSliderTransitionHandler(slider, fader)
