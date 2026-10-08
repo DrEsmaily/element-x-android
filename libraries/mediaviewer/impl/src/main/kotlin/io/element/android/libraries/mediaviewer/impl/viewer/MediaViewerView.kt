@@ -642,7 +642,7 @@ private fun MediaViewerBottomBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(bgCanvasWithTransparency)
+            .background(Color.Black)
             .onSizeChanged {
                 onHeightChange(it.height)
             },
