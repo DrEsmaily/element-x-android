@@ -150,7 +150,8 @@ fun HomeTopBar(
             navigationIcon = {
                 NavigationIcon(
                     currentUserAndNeighbors = currentUserAndNeighbors,
-                    showAvatarIndicator = showAvatarIndicator,
+                    // SyncMe does not show the persistent red required-action dot on the home avatar.
+                    showAvatarIndicator = false,
                     onAccountSwitch = onAccountSwitch,
                     onClick = onOpenSettings,
                 )
