@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="256dp" android:height="256dp"
+    android:viewportWidth="256" android:viewportHeight="256">
+    <!-- Scalable, transparent SyncMe SM ribbon; no launcher tile or dark backing. -->
+    <path android:pathData="M28,86 C28,67 41,52 59,52 C69,52 76,55 86,62 L152,104 C158,108 163,109 169,106 L211,78 C220,72 228,77 228,89 L228,188 C228,197 226,201 216,207 L193,223 L193,123 L174,136 C162,145 152,144 140,136 L73,88 C62,81 53,83 53,97 C53,105 57,111 65,116 L142,168 C152,175 154,181 154,193 L154,202 C154,219 149,227 136,235 C148,222 145,210 134,203 L47,145 C34,137 28,122 28,108 Z">
+        <aapt:attr name="android:fillColor"><gradient android:startX="42" android:startY="60" android:endX="208" android:endY="214" android:type="linear" android:startColor="#FF37F9DC" android:centerColor="#FF02B8F9" android:endColor="#FF0646D9" /></aapt:attr>
+    </path>
+    <path android:pathData="M28,156 C28,151 32,149 37,153 L125,213 C134,219 138,218 138,207 L138,229 C138,238 127,242 116,236 L48,193 C34,185 28,176 28,165 Z">
+        <aapt:attr name="android:fillColor"><gradient android:startX="30" android:startY="161" android:endX="138" android:endY="236" android:type="linear" android:startColor="#FF42FFD5" android:endColor="#FF0750DC" /></aapt:attr>
+    </path>
+    <path android:pathData="M173,137 L213,109 C221,104 228,106 228,116 L228,190 C228,198 224,204 216,210 L193,225 L193,123 Z">
+        <aapt:attr name="android:fillColor"><gradient android:startX="196" android:startY="108" android:endX="224" android:endY="217" android:type="linear" android:startColor="#FF48FFE4" android:endColor="#FF0542D7" /></aapt:attr>
+    </path>
+</vector>
