@@ -116,7 +116,7 @@ fun HomeView(
             state = homeState,
             onSetUpRecoveryClick = onSetUpRecoveryClick,
             onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
-            onRoomClick = { roomId -> if (firstThrottler.canHandle()) onRoomClick(roomId, null) },
+            onRoomClick = { roomId -> onRoomClick(roomId, null) },
             onOpenSettings = { if (firstThrottler.canHandle()) onSettingsClick() },
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
