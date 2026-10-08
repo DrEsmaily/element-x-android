@@ -277,7 +277,7 @@ fun RoomDetailsView(
                     }
                 }
                 is RoomDetailsType.Dm -> {
-                    if (state.canInvite) {
+                    if (false && state.canInvite) {
                         // Note: for rooms the invite action is a Main action
                         PreferenceCategory {
                             InviteItem(onClick = invitePeople)
@@ -442,7 +442,7 @@ private fun MainActionsSection(
                 onClick = { onCall(CallIntent.VIDEO) },
             )
         }
-        if (state.canInvite && state.roomType !is RoomDetailsType.Dm) {
+        if (false && state.canInvite && state.roomType !is RoomDetailsType.Dm) {
             MainActionButton(
                 title = stringResource(CommonStrings.action_invite),
                 imageVector = CompoundIcons.UserAdd(),
