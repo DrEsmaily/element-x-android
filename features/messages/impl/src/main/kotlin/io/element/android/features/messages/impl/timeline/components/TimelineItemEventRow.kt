@@ -210,10 +210,25 @@ fun TimelineItemEventRow(
     val coroutineScope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val bubbleWidthPx = remember { mutableIntStateOf(0) }
-    // Let a narrow file bubble grow enough to display its upload status on one line.
-    val uploadBubbleMinWidth = if (mediaUploadProgress != null) {
-        minOf(300.dp, (LocalConfiguration.current.screenWidthDp - 48).coerceAtLeast(180).dp)
-    } else null
+    // Size the upload bubble to the actual one-line status text, never a fixed 300dp.
+    // Only small attachments are expanded; large media keeps its natural width.
+    val progressTextMeasurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val uploadBubbleMinWidth = mediaUploadProgress?.let { fraction ->
+        val contentSize = (event.content as? TimelineItemEventContentWithAttachment)?.fileSize?.takeIf { it > 0L }
+        val sent = contentSize?.let { (it.toDouble() * fraction.toDouble()).toLong().coerceIn(0L, it) }
+        val status = if (contentSize != null && sent != null) {
+            "Uploading ${(fraction * 100f).roundToInt()}%  ·  ${formatUploadBytes(sent)} / ${formatUploadBytes(contentSize)}"
+        } else "Uploading ${(fraction * 100f).roundToInt()}%"
+        val measuredWidth = progressTextMeasurer.measure(
+            text = status,
+            style = ElementTheme.typography.fontBodySmMedium,
+            maxLines = 1,
+            softWrap = false,
+        ).size.width
+        with(LocalDensity.current) {
+            minOf(measuredWidth.toDp() + 4.dp, (LocalConfiguration.current.screenWidthDp - 48).coerceAtLeast(180).dp)
+        }
+    }
 
     val onContentClick = if (event.mustBeProtected()) {
         // In this case, let the content handle the click
