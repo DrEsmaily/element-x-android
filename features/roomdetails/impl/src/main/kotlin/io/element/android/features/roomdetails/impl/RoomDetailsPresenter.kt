@@ -62,7 +62,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import io.element.android.libraries.matrix.ui.model.powerLevelOf
 import io.element.android.libraries.matrix.api.room.roomMembers
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
 
@@ -154,7 +153,7 @@ class RoomDetailsPresenter(
 
         val closingGroup = remember { androidx.compose.runtime.mutableStateOf(false) }
         val closeGroupError = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-        val myPowerLevel = roomInfo.powerLevelOf(room.sessionId)
+        val myPowerLevel = membersState.roomMembers().orEmpty().firstOrNull { it.userId.value == room.sessionId.value }?.powerLevel ?: 0
         val roomMemberList = membersState.roomMembers().orEmpty()
         val canCloseGroup = !isDm && permissions.canEditRolesAndPermissions &&
             roomMemberList.filter { it.userId.value != room.sessionId.value && it.membership in listOf(RoomMembershipState.JOIN, RoomMembershipState.INVITE, RoomMembershipState.KNOCK) }
@@ -174,7 +173,7 @@ class RoomDetailsPresenter(
                                 it.userId.value != room.sessionId.value &&
                                     it.membership in listOf(RoomMembershipState.JOIN, RoomMembershipState.INVITE, RoomMembershipState.KNOCK)
                             }
-                            val power = room.roomInfoFlow.value.powerLevelOf(room.sessionId)
+                            val power = room.membersStateFlow.value.roomMembers().orEmpty().firstOrNull { it.userId.value == room.sessionId.value }?.powerLevel ?: 0
                             val failure = if (members.any { it.powerLevel >= power }) {
                                 "A member has equal or higher privileges; transfer ownership or lower their role first."
                             } else {
