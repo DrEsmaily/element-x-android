@@ -24,6 +24,6 @@ class DefaultVersionFormatter(
     private val buildMeta: BuildMeta,
 ) : VersionFormatter {
     override fun get(): String {
-        return "SyncMe • v${buildMeta.versionName} • Build ${buildMeta.versionCode} • Rev ${buildMeta.gitRevision.take(9)}"
+        return "SyncMe by 0x07c4 • Build ${buildMeta.versionName}"
     }
 }
