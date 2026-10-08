@@ -157,7 +157,6 @@ class AttachmentsPreviewPresenter(
         val observableSendState = snapshotFlow { sendActionState.value }
 
         var displayFileTooLargeError by remember { mutableStateOf(false) }
-        var uploadProgress by remember { mutableStateOf<UploadProgress?>(null) }
 
         LaunchedEffect(
             mediaOptimizationSelectorStates,
@@ -283,7 +282,6 @@ class AttachmentsPreviewPresenter(
                                 caption = caption,
                                 sendActionState = sendActionState,
                                 inReplyToEventId = inReplyToEventId,
-                                onUploadProgress = { uploadProgress = it },
                             )
 
                             // Clean up the pre-processed media after it's been sent
@@ -439,7 +437,6 @@ class AttachmentsPreviewPresenter(
             displayFileTooLargeError = displayFileTooLargeError,
             currentIndex = currentIndex,
             eventSink = ::handleEvent,
-            uploadProgress = uploadProgress,
         )
     }
 
@@ -538,96 +535,37 @@ class AttachmentsPreviewPresenter(
         caption: String?,
         sendActionState: MutableState<SendActionState>,
         inReplyToEventId: EventId?,
-        onUploadProgress: (UploadProgress?) -> Unit,
-    ) {
-        val fileSizes = mediaUploadInfos.map { uploadInfo ->
-            when (uploadInfo) {
-                is MediaUploadInfo.Image -> uploadInfo.imageInfo.size
-                is MediaUploadInfo.Video -> uploadInfo.videoInfo.size
-                is MediaUploadInfo.Audio -> uploadInfo.audioInfo.size
-                is MediaUploadInfo.VoiceMessage -> uploadInfo.audioInfo.size
-                is MediaUploadInfo.AnyFile -> uploadInfo.fileInfo.size
-            }?.takeIf { it > 0L } ?: uploadInfo.file.length().takeIf { it > 0L } ?: 0L
+    ) = runCatchingExceptions {
+        if (mediaUploadInfos.size == 1) {
+            sendActionState.value = SendActionState.Sending.Uploading(mediaUploadInfos)
+            mediaSender.sendPreProcessedMedia(
+                mediaUploadInfo = mediaUploadInfos.first(),
+                caption = caption,
+                formattedCaption = null,
+                inReplyToEventId = inReplyToEventId,
+            ).getOrThrow()
+        } else {
+            mediaSender.sendGallery(
+                mediaUploadInfos = mediaUploadInfos,
+                caption = caption,
+                formattedCaption = null,
+                inReplyToEventId = inReplyToEventId,
+            ).getOrThrow()
         }
-        val totalBytes = fileSizes.sum().takeIf { it > 0L } ?: 1L
-
-        // Make progress visible immediately instead of waiting for the first SDK callback.
-        // Subsequent values come from the Matrix SDK SendQueueUpdate.MediaUpload stream.
-        onUploadProgress(
-            UploadProgress(
-                fraction = 0f,
-                uploadedBytes = 0L,
-                totalBytes = totalBytes,
-            )
-        )
-
-        val result = runCatchingExceptions {
-            coroutineScope {
-                val progressByIndex = mutableMapOf<Int, Float>()
-                val progressJob = launch(start = CoroutineStart.UNDISPATCHED) {
-                    room.subscribeToSendQueueUpdates().collect { update ->
-                        if (update !is SendQueueUpdate.MediaUpload) return@collect
-                        val itemProgress = update.progress.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: return@collect
-                        val index = update.index.toInt()
-                        val uploadedBytes = if (index in fileSizes.indices) {
-                            repeat(index) { completedIndex ->
-                                progressByIndex[completedIndex] = 1f
-                            }
-                            progressByIndex[index] = itemProgress
-                            fileSizes.mapIndexed { fileIndex, size ->
-                                (size.toDouble() * (progressByIndex[fileIndex] ?: 0f)).toLong()
-                            }.sum().coerceIn(0L, totalBytes)
-                        } else {
-                            (totalBytes.toDouble() * itemProgress).toLong().coerceIn(0L, totalBytes)
-                        }
-                        onUploadProgress(
-                            UploadProgress(
-                                fraction = (uploadedBytes.toDouble() / totalBytes.toDouble()).toFloat().coerceIn(0f, 1f),
-                                uploadedBytes = uploadedBytes,
-                                totalBytes = totalBytes,
-                            )
-                        )
-                    }
-                }
-                try {
-                    sendActionState.value = SendActionState.Sending.Uploading(mediaUploadInfos)
-                    if (mediaUploadInfos.size == 1) {
-                        mediaSender.sendPreProcessedMedia(
-                            mediaUploadInfo = mediaUploadInfos.first(),
-                            caption = caption,
-                            formattedCaption = null,
-                            inReplyToEventId = inReplyToEventId,
-                        ).getOrThrow()
-                    } else {
-                        mediaSender.sendGallery(
-                            mediaUploadInfos = mediaUploadInfos,
-                            caption = caption,
-                            formattedCaption = null,
-                            inReplyToEventId = inReplyToEventId,
-                        ).getOrThrow()
-                    }
-                } finally {
-                    progressJob.cancel()
-                }
+    }.fold(
+        onSuccess = {
+            mediaUploadInfos.forEach { cleanUp(it) }
+            sendActionState.value = SendActionState.Done
+            onDoneListener()
+        },
+        onFailure = { error ->
+            Timber.e(error, "Failed to send attachment")
+            if (error is CancellationException) {
+                throw error
+            } else {
+                sendActionState.value = SendActionState.Failure(error, mediaUploadInfos)
             }
         }
+    )
 
-        result.fold(
-            onSuccess = {
-                onUploadProgress(null)
-                mediaUploadInfos.forEach { cleanUp(it) }
-                sendActionState.value = SendActionState.Done
-                onDoneListener()
-            },
-            onFailure = { error ->
-                onUploadProgress(null)
-                Timber.e(error, "Failed to send attachment")
-                if (error is CancellationException) {
-                    throw error
-                } else {
-                    sendActionState.value = SendActionState.Failure(error, mediaUploadInfos)
-                }
-            }
-        )
-    }
 }
