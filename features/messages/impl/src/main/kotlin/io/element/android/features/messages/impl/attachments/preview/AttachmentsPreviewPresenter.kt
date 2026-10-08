@@ -118,8 +118,6 @@ class AttachmentsPreviewPresenter(
         )
 
         val ongoingSendAttachmentJob = remember { mutableStateOf<Job?>(null) }
-        // Unlike the short-lived preview task, this job owns the actual media send.
-        val ongoingMediaSendJob = remember { mutableStateOf<Job?>(null) }
 
         var currentIndex by remember { mutableIntStateOf(0) }
 
@@ -236,12 +234,6 @@ class AttachmentsPreviewPresenter(
         fun handleEvent(event: AttachmentsPreviewEvent) {
             when (event) {
                 is AttachmentsPreviewEvent.SendAttachment -> {
-                    // Ignore duplicate send taps while an existing send request is preparing
-                    // or uploading media. A second coroutine here can enqueue the same file twice.
-                    if (ongoingSendAttachmentJob.value?.isActive == true ||
-                        ongoingMediaSendJob.value?.isActive == true ||
-                        sendActionState.value is SendActionState.Sending.Uploading
-                    ) return
                     ongoingSendAttachmentJob.value = coroutineScope.launch {
                         if (preprocessMediaJob?.isActive != true && sendActionState.value !is SendActionState.Sending.ReadyToUpload) {
                             val configs = mediaOptimizationSelectorStates.mapIndexed { index, selectorState ->
@@ -258,6 +250,7 @@ class AttachmentsPreviewPresenter(
                                     },
                                 )
                             }
+
                             preprocessMediaJob = coroutineScope.launch(dispatchers.io) {
                                 preProcessAttachments(
                                     attachments = editedAttachments,
@@ -284,8 +277,7 @@ class AttachmentsPreviewPresenter(
                         editedTempFiles = emptyMap()
 
                         // Send the media using the session coroutine scope so it doesn't matter if this screen or the chat one are closed
-                        // Keep the active upload job across the preview-to-chat transition.
-                        ongoingMediaSendJob.value = sessionCoroutineScope.launch(dispatchers.io) {
+                        sessionCoroutineScope.launch(dispatchers.io) {
                             sendMedia(
                                 mediaUploadInfos = allMediaUploadInfos,
                                 caption = caption,
