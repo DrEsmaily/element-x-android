@@ -56,6 +56,7 @@ import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
 import io.element.android.libraries.matrix.ui.safety.rememberHideInvitesAvatar
 import io.element.android.libraries.push.api.battery.BatteryOptimizationState
+import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.watchers.AnalyticsColdStartWatcher
 import io.element.android.services.analyticsproviders.api.trackers.captureInteraction
@@ -89,6 +90,7 @@ class RoomListPresenter(
     private val spaceFiltersPresenter: Presenter<SpaceFiltersState>,
     private val globalSearchPresenter: Presenter<GlobalSearchState>,
     private val featureFlagService: FeatureFlagService,
+    private val appPreferencesStore: AppPreferencesStore,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -144,6 +146,9 @@ class RoomListPresenter(
                     leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(event.roomId, needsConfirmation = event.needsConfirmation))
                 }
                 is RoomListEvent.SetRoomIsFavorite -> coroutineScope.setRoomIsFavorite(event.roomId, event.isFavorite)
+                is RoomListEvent.ToggleRoomCustomTag -> coroutineScope.launch {
+                    appPreferencesStore.toggleRoomInCustomTag(event.tagId, event.roomId.value)
+                }
                 is RoomListEvent.MarkAsRead -> coroutineScope.markAsRead(event.roomId)
                 is RoomListEvent.MarkAsUnread -> coroutineScope.markAsUnread(event.roomId)
                 is RoomListEvent.AcceptInvite -> {
@@ -161,10 +166,16 @@ class RoomListPresenter(
             }
         }
 
-        LaunchedEffect(filtersState.filterSelectionStates, spaceFiltersState.selectedFilter()) {
+        LaunchedEffect(
+            filtersState.filterSelectionStates,
+            filtersState.activeCustomTagId,
+            filtersState.customTags,
+        ) {
             val selectedFilters = filtersState.selectedFilters().map { filter -> filter.into() }
-            val selectedSpaceFilter = spaceFiltersState.selectedFilter().into()
-            val allFilters = RoomListFilter.All(selectedFilters + listOfNotNull(selectedSpaceFilter))
+            val customTagFilter = filtersState.selectedCustomTag()?.let { tag ->
+                RoomListFilter.Identifiers(tag.roomIds.map(::RoomId))
+            }
+            val allFilters = RoomListFilter.All(selectedFilters + listOfNotNull(customTagFilter))
             roomListDataSource.updateFilter(allFilters)
         }
 
