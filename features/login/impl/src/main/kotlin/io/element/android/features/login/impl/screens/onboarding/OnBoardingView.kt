@@ -136,18 +136,12 @@ private fun AddFirstAccountScaffold(
 ) {
     OnBoardingPage(
         modifier = modifier,
-        renderBackground = state.onBoardingLogoResId == null,
+        renderBackground = true,
         content = {
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
-                if (state.onBoardingLogoResId != null) {
-                    OnBoardingLogo(
-                        onBoardingLogoResId = state.onBoardingLogoResId,
-                    )
-                } else {
-                    OnBoardingContent(state = state)
-                }
+                OnBoardingContent(state = state)
                 if (state.showDeveloperSettings) {
                     IconButton(
                         onClick = onDeveloperSettingsClick,
