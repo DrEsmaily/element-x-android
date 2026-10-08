@@ -62,6 +62,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import io.element.android.libraries.matrix.api.room.roomMembers
+import io.element.android.libraries.matrix.api.room.RoomMembershipState
 
 @AssistedInject
 class RoomDetailsPresenter(
@@ -149,11 +151,46 @@ class RoomDetailsPresenter(
 
         val roomNotificationSettingsState by room.roomNotificationSettingsStateFlow.collectAsState()
 
+        val closingGroup = remember { androidx.compose.runtime.mutableStateOf(false) }
+        val closeGroupError = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+        val myPowerLevel = roomInfo.powerLevelOf(room.sessionId)
+        val roomMemberList = membersState.roomMembers().orEmpty()
+        val canCloseGroup = !isDm && roomMemberList.any { it.userId.value != room.sessionId.value } &&
+            roomMemberList.filter { it.userId.value != room.sessionId.value && it.membership in listOf(RoomMembershipState.JOIN, RoomMembershipState.INVITE, RoomMembershipState.KNOCK) }
+                .all { it.powerLevel < myPowerLevel }
+
         val snackbarDispatcher = LocalSnackbarDispatcher.current
         val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
 
         fun handleEvent(event: RoomDetailsEvent) {
             when (event) {
+                RoomDetailsEvent.CloseGroupForEveryone -> {
+                    if (canCloseGroup && !closingGroup.value) {
+                        closingGroup.value = true
+                        closeGroupError.value = null
+                        scope.launch(dispatchers.io) {
+                            val members = room.membersStateFlow.value.roomMembers().orEmpty().filter {
+                                it.userId.value != room.sessionId.value &&
+                                    it.membership in listOf(RoomMembershipState.JOIN, RoomMembershipState.INVITE, RoomMembershipState.KNOCK)
+                            }
+                            val power = room.roomInfoFlow.value.powerLevelOf(room.sessionId)
+                            val failure = if (members.any { it.powerLevel >= power }) {
+                                "A member has equal or higher privileges; transfer ownership or lower their role first."
+                            } else {
+                                members.firstNotNullOfOrNull { member ->
+                                    val result = room.banUser(member.userId, reason = "Group closed by administrator")
+                                    result.exceptionOrNull()?.message?.let { "${member.userId.value}: $it" }
+                                }
+                            }
+                            if (failure == null) {
+                                leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(room.roomId, needsConfirmation = false))
+                            } else {
+                                closeGroupError.value = failure
+                            }
+                            closingGroup.value = false
+                        }
+                    }
+                }
                 is RoomDetailsEvent.LeaveRoom -> {
                     leaveRoomState.eventSink(LeaveRoomEvent.LeaveRoom(room.roomId, needsConfirmation = event.needsConfirmation))
                 }
@@ -202,6 +239,9 @@ class RoomDetailsPresenter(
             memberCount = joinedMemberCount,
             isEncrypted = isEncrypted,
             canInvite = permissions.canInvite,
+            canCloseGroup = canCloseGroup,
+            closingGroup = closingGroup.value,
+            closeGroupError = closeGroupError.value,
             canEdit = roomType == RoomDetailsType.Room && permissions.editDetailsPermissions.hasAny,
             roomCallState = roomCallState,
             roomType = roomType,
