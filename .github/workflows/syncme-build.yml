@@ -79,7 +79,7 @@ jobs:
             echo "Commit: ${SHA}"
             echo "Build job state: ${JOB_RESULT}"
             echo "Build: :app:assembleGplayRelease, optimized Release, applicationIdSuffix=.syncmerelease"
-            echo "APK created: $(if compgen -G 'app/build/outputs/apk/gplay/release/*-universal-release.apk' >/dev/null; then echo yes; else echo no; fi)"
+            echo "ARM64 APK created: $(if compgen -G 'app/build/outputs/apk/gplay/release/*arm64-v8a*release.apk' >/dev/null; then echo yes; else echo no; fi)"
             echo "Note: APK compilation does not validate runtime upload, room speed or UI."
             echo
             echo "=== MASTER REQUIREMENTS / CURRENT KNOWN STATUS ==="
@@ -96,17 +96,7 @@ jobs:
             echo "Priority: diagnose upload retry/stall/duplicate events; then room-opening responsiveness; then progress/bubbles/bottom-sheets/tag/black-theme regression testing."
           } > "$FILE"
 
-      - name: Upload APK and checkpoint together
-        if: success()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: SyncMe-release-apk-${{ github.run_number }}-${{ github.sha }}
-          if-no-files-found: error
-          path: |
-            app/build/outputs/apk/gplay/release/*-universal-release.apk
-            build-checkpoint/*.txt
-
-      - name: Upload smaller ARM64 APK and checkpoint
+      - name: Upload ARM64 APK and checkpoint
         if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
