@@ -46,7 +46,7 @@ android {
         applicationId = BuildTimeConfig.APPLICATION_ID
         targetSdk = Versions.TARGET_SDK
         versionCode = Versions.VERSION_CODE
-        versionName = Versions.VERSION_NAME
+        versionName = System.getenv("SYNCME_BUILD_NUMBER") ?: Versions.VERSION_NAME
 
         // Keep abiFilter for the universalApk
         ndk {
