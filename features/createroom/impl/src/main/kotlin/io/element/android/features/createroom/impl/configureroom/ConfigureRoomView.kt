@@ -287,7 +287,7 @@ private fun RoomJoinRuleOptions(
         title = stringResource(R.string.screen_create_room_room_access_section_title),
         modifier = modifier,
     ) {
-        options.forEach { item ->
+        options.filterNot { it is JoinRuleItem.PrivateVisibility.Restricted || it is JoinRuleItem.PrivateVisibility.AskToJoinRestricted }.forEach { item ->
             val isSelected = item == selected
             ListItem(
                 leadingContent = ListItemContent.Custom {
