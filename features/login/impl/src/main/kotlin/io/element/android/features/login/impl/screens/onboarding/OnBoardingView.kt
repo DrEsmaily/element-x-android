@@ -9,8 +9,6 @@
 package io.element.android.features.login.impl.screens.onboarding
 
 import androidx.compose.foundation.Image
-import android.widget.ImageView
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.clickable
@@ -208,48 +206,10 @@ private fun OnBoardingContent(state: OnBoardingState) {
             // Use the full-resolution SyncMe artwork bundled as drawable-nodpi.
             // The launcher icon supplied by PackageManager may be a density-scaled
             // adaptive-icon raster and visibly blurry when enlarged.
-            AndroidView(
+            Image(
+                painter = painterResource(id = R.drawable.syncme_welcome_mark),
+                contentDescription = "SyncMe",
                 modifier = Modifier.height(132.dp).fillMaxWidth(),
-                factory = { context ->
-                    ImageView(context).apply {
-                        val fullResolution = context.resources.getIdentifier(
-                            "syncme_launcher", "drawable", context.packageName
-                        )
-                        if (fullResolution != 0) {
-                            // The supplied artwork has a dark square baked into the image.
-                            // Extract the luminous SyncMe symbol on a transparent bitmap
-                            // instead of drawing the complete square over the welcome gradient.
-                            val original = android.graphics.BitmapFactory.decodeResource(context.resources, fullResolution)
-                            if (original != null) {
-                                val transparent = original.copy(android.graphics.Bitmap.Config.ARGB_8888, true)
-                                val pixels = IntArray(transparent.width * transparent.height)
-                                transparent.getPixels(pixels, 0, transparent.width, 0, 0, transparent.width, transparent.height)
-                                for (i in pixels.indices) {
-                                    val pixel = pixels[i]
-                                    val red = android.graphics.Color.red(pixel)
-                                    val green = android.graphics.Color.green(pixel)
-                                    val blue = android.graphics.Color.blue(pixel)
-                                    val brightness = maxOf(red, green, blue)
-                                    // Keep bright cyan/blue strokes; fade the dark baked-in background.
-                                    val opacity = ((brightness - 65) * 255 / 95).coerceIn(0, 255)
-                                    pixels[i] = android.graphics.Color.argb(
-                                        opacity * android.graphics.Color.alpha(pixel) / 255,
-                                        red, green, blue
-                                    )
-                                }
-                                transparent.setPixels(pixels, 0, transparent.width, 0, 0, transparent.width, transparent.height)
-                                setImageBitmap(transparent)
-                            } else {
-                                setImageResource(fullResolution)
-                            }
-                        } else {
-                            setImageDrawable(context.packageManager.getApplicationIcon(context.packageName))
-                        }
-                        scaleType = ImageView.ScaleType.FIT_CENTER
-                        adjustViewBounds = true
-                        contentDescription = "SyncMe"
-                    }
-                },
             )
             Spacer(modifier = Modifier.height(24.dp))
             Text(
@@ -323,11 +283,11 @@ private fun OnBoardingButtons(
             enabled = defaultAccountProvider == null || state.submitEnabled || isLoading,
             modifier = Modifier.fillMaxWidth().testTag(TestTags.onBoardingSignIn),
         )
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = "by 0x07c4",
             color = ElementTheme.colors.textSecondary,
-            style = ElementTheme.typography.fontBodyMdRegular,
+            style = ElementTheme.typography.fontBodySmRegular,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
         )
