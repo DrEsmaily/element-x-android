@@ -305,6 +305,26 @@ class DefaultAppPreferencesStore(
         return createdId
     }
 
+    override suspend fun renameCustomRoomTag(tagId: String, name: String): Boolean {
+        val normalized = name.trim().take(MAX_CUSTOM_ROOM_TAG_NAME_LENGTH)
+        if (normalized.isBlank()) return false
+        var changed = false
+        store.edit { prefs ->
+            val tags = prefs.readCustomRoomTags()
+            if (tags.any { it.id != tagId && it.name.equals(normalized, ignoreCase = true) }) return@edit
+            if (tags.none { it.id == tagId }) return@edit
+            prefs.writeCustomRoomTags(tags.map { if (it.id == tagId) it.copy(name = normalized) else it })
+            changed = true
+        }
+        return changed
+    }
+
+    override suspend fun clearCustomRoomTagChats(tagId: String) {
+        store.edit { prefs ->
+            prefs.writeCustomRoomTags(prefs.readCustomRoomTags().map { if (it.id == tagId) it.copy(roomIds = emptySet()) else it })
+        }
+    }
+
     override suspend fun deleteCustomRoomTag(tagId: String) {
         store.edit { prefs ->
             val updated = prefs.readCustomRoomTags().filterNot { it.id == tagId }
