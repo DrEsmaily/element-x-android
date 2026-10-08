@@ -497,6 +497,13 @@ private fun RoomListCustomTagView(
             labelColor = textColour.value,
             selectedLabelColor = textColour.value,
         ),
+        leadingIcon = {
+            Image(
+                painter = painterResource(id = R.drawable.syncme_tag_outline),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+        },
         label = {
             Text(
                 text = tag.name,
