@@ -19,10 +19,8 @@ import io.element.android.libraries.designsystem.components.list.ListItemContent
 import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
 import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
-import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.ListItem
-import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.ui.strings.CommonStrings
 
@@ -50,9 +48,6 @@ fun PreferencesAccountView(
             state = state,
             onOpenNotificationSettings = onOpenNotificationSettings,
             onSecureBackupClick = onSecureBackupClick,
-        )
-        // General section
-        GeneralSection(
             onModerationAndSafetyClick = onModerationAndSafetyClick,
         )
     }
@@ -91,6 +86,7 @@ private fun ColumnScope.OtherSettingsSection(
     state: PreferencesAccountState,
     onOpenNotificationSettings: () -> Unit,
     onSecureBackupClick: () -> Unit,
+    onModerationAndSafetyClick: () -> Unit,
 ) {
     ListItem(
         content = { Text(stringResource(id = R.string.screen_notification_settings_title)) },
@@ -105,20 +101,11 @@ private fun ColumnScope.OtherSettingsSection(
             onClick = onSecureBackupClick,
         )
     }
-}
-
-@Composable
-private fun ColumnScope.GeneralSection(
-    onModerationAndSafetyClick: () -> Unit,
-) {
-    HorizontalDivider()
     ListItem(
         content = { Text(stringResource(id = CommonStrings.common_moderation_and_safety)) },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Admin())),
         onClick = onModerationAndSafetyClick,
     )
-    // Sign out and Delete account are intentionally rendered near the bottom of the root
-    // settings page, immediately above About, so destructive actions stay separated.
 }
 
 @PreviewsDayNight
