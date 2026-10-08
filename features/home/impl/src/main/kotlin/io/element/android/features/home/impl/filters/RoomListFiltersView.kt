@@ -114,6 +114,10 @@ fun RoomListFiltersView(
             )
         )
     }
+    // Move the selected custom chip into view as the built-in filters do.
+    LaunchedEffect(state.activeCustomTagId) {
+        if (state.activeCustomTagId != null) lazyListState.animateScrollToItem(1)
+    }
     val previousFilters = remember { mutableStateOf(listOf<RoomListFilter>()) }
     // Put the selected custom tag first among custom chips, just like built-in
     // filters place the selected chip at the leading edge of their group.
