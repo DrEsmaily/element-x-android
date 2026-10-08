@@ -32,6 +32,17 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.IconButton
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.weight
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,8 +89,9 @@ fun RoomListFiltersView(
     var scrollToStart by remember { mutableIntStateOf(0) }
     val lazyListState = rememberLazyListState()
     var showTagManager by rememberSaveable { mutableStateOf(false) }
-    var newTagName by rememberSaveable { mutableStateOf("") }
+
     LaunchedEffect(scrollToStart) {
+        if (scrollToStart == 0) return@LaunchedEffect
         // Scroll until the first item start to be displayed
         // Since all items have different size, there is no way to compute the amount of
         // pixel to scroll to go directly to the start of the row.
@@ -106,13 +118,6 @@ fun RoomListFiltersView(
     // Put the selected custom tag first among custom chips, just like built-in
     // filters place the selected chip at the leading edge of their group.
     val orderedCustomTags = state.customTags.sortedBy { if (it.id == state.activeCustomTagId) 0 else 1 }
-    LaunchedEffect(state.activeCustomTagId) {
-        if (state.activeCustomTagId != null) {
-            // Jump once to the selected chip's new leading slot. The old animated
-            // scroll raced the LazyRow item animation and looked like a rewind.
-            lazyListState.animateScrollToItem(0)
-        }
-    }
     LazyRow(
         contentPadding = PaddingValues(start = 8.dp, end = 16.dp),
         modifier = modifier.fillMaxWidth(),
@@ -202,60 +207,186 @@ fun RoomListFiltersView(
     }
 
     if (showTagManager) {
-        AlertDialog(
-            onDismissRequest = { showTagManager = false },
-            title = { androidx.compose.material3.Text("Manage tags") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = newTagName,
-                        onValueChange = { newTagName = it.take(32) },
-                        singleLine = true,
-                        label = { androidx.compose.material3.Text("New tag") },
-                        enabled = state.customTags.size < 3,
-                        modifier = Modifier.fillMaxWidth(),
+        SyncMeTagManager(
+            tags = state.customTags,
+            onDismiss = { showTagManager = false },
+            onCreate = { state.eventSink(RoomListFiltersEvent.CreateCustomTag(it)) },
+            onRename = { id, name -> state.eventSink(RoomListFiltersEvent.RenameCustomTag(id, name)) },
+            onClearChats = { state.eventSink(RoomListFiltersEvent.ClearCustomTagChats(it)) },
+            onDelete = { state.eventSink(RoomListFiltersEvent.DeleteCustomTag(it)) },
+            onOpen = { id ->
+                state.eventSink(RoomListFiltersEvent.SelectCustomTag(id))
+                showTagManager = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun SyncMeTagManager(
+    tags: List<CustomRoomTag>,
+    onDismiss: () -> Unit,
+    onCreate: (String) -> Unit,
+    onRename: (String, String) -> Unit,
+    onClearChats: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    var page by rememberSaveable { mutableStateOf("manage") }
+    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var draft by rememberSaveable { mutableStateOf("") }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
+    val selected = tags.firstOrNull { it.id == selectedId }
+    val remaining = 3 - tags.size
+    val trimmed = draft.trim()
+    val valid = trimmed.isNotBlank() && trimmed.length <= 20 &&
+        tags.none { it.id != (if (page == "rename") selectedId else null) && it.name.equals(trimmed, ignoreCase = true) }
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Surface(color = ElementTheme.colors.bgCanvasDefault, modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 26.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = {
+                        if (page == "manage") onDismiss() else {
+                            page = if (page == "create" || page == "details") "manage" else "details"
+                            confirmDelete = false
+                        }
+                    }) { androidx.compose.material3.Text("‹ Back") }
+                    androidx.compose.material3.Text(
+                        text = when (page) {
+                            "create" -> "Create tag"
+                            "details" -> "Tag details"
+                            "rename" -> "Rename tag"
+                            else -> "Manage tags"
+                        },
+                        style = MaterialTheme.typography.titleLarge,
                     )
-                    if (state.customTags.size >= 3) {
-                        androidx.compose.material3.Text("Maximum 3 personal tags. Delete a tag to create another.")
-                    }
-                    state.customTags.forEach { tag ->
-                        Row(
+                }
+                when (page) {
+                    "manage" -> {
+                        androidx.compose.material3.Text("Organize your chats with up to 3 custom tags.",
+                            color = ElementTheme.colors.textSecondary)
+                        androidx.compose.material3.Text("Favorite", style = MaterialTheme.typography.titleMedium)
+                        TagManagerRow("★", "Favorite", "Built-in", { onDismiss() })
+                        HorizontalDivider()
+                        androidx.compose.material3.Text("Custom tags", style = MaterialTheme.typography.titleMedium)
+                        tags.forEach { tag ->
+                            TagManagerRow("◈", tag.name, "${tag.roomIds.size} chats", {
+                                selectedId = tag.id
+                                page = "details"
+                            })
+                        }
+                        if (tags.isEmpty()) androidx.compose.material3.Text("No custom tags yet.")
+                        Spacer(Modifier.weight(1f))
+                        Button(
+                            onClick = { draft = ""; page = "create" },
+                            enabled = remaining > 0,
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            androidx.compose.material3.Text(
-                                text = tag.name,
-                                modifier = Modifier.weight(1f),
-                            )
-                            IconButton(
-                                onClick = { state.eventSink(RoomListFiltersEvent.DeleteCustomTag(tag.id)) },
-                            ) {
-                                Icon(
-                                    imageVector = CompoundIcons.Delete(),
-                                    contentDescription = "Delete tag",
-                                )
+                        ) { androidx.compose.material3.Text("+ Create new tag") }
+                        androidx.compose.material3.Text(
+                            if (remaining == 0) "You've reached the 3-tag limit. Delete a tag to create another."
+                            else "${tags.size} of 3 tags used",
+                            color = ElementTheme.colors.textSecondary,
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                        )
+                    }
+                    "create", "rename" -> {
+                        androidx.compose.material3.Text("Tag name")
+                        OutlinedTextField(
+                            value = draft,
+                            onValueChange = { draft = it.take(20) },
+                            label = { androidx.compose.material3.Text("Add tag name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        androidx.compose.material3.Text("${draft.length}/20", color = ElementTheme.colors.textSecondary)
+                        androidx.compose.material3.Text("Choose an icon (optional)")
+                        androidx.compose.material3.Text("◈     ♡     ★     ▣     ✈",
+                            style = MaterialTheme.typography.headlineMedium, color = ElementTheme.colors.textSecondary)
+                        androidx.compose.material3.Text("Preview")
+                        TagManagerRow("◈", draft.ifBlank { "Tag name" }, "0 chats", {})
+                        Spacer(Modifier.weight(1f))
+                        Button(
+                            onClick = {
+                                if (page == "rename") {
+                                    selectedId?.let { onRename(it, trimmed) }
+                                    page = "details"
+                                } else {
+                                    onCreate(trimmed)
+                                    page = "manage"
+                                }
+                            },
+                            enabled = valid && (page == "rename" || remaining > 0),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { androidx.compose.material3.Text(if (page == "rename") "Save" else "Create tag") }
+                        androidx.compose.material3.Text("You can create up to 3 custom tags. New tags are not selected automatically.",
+                            color = ElementTheme.colors.textSecondary)
+                    }
+                    "details" -> {
+                        if (selected == null) {
+                            androidx.compose.material3.Text("Tag no longer exists.")
+                            TextButton(onClick = { page = "manage" }) { androidx.compose.material3.Text("Back") }
+                        } else {
+                            Spacer(Modifier.height(10.dp))
+                            androidx.compose.material3.Text("◈", modifier = Modifier.align(Alignment.CenterHorizontally),
+                                style = MaterialTheme.typography.headlineLarge)
+                            androidx.compose.material3.Text(selected.name, modifier = Modifier.align(Alignment.CenterHorizontally),
+                                style = MaterialTheme.typography.titleLarge)
+                            androidx.compose.material3.Text("${selected.roomIds.size} chats",
+                                modifier = Modifier.align(Alignment.CenterHorizontally),
+                                color = ElementTheme.colors.textSecondary)
+                            TagManagerRow("✎", "Rename", "", {
+                                draft = selected.name
+                                page = "rename"
+                            })
+                            TagManagerRow("✓", "View tagged chats", "", { onOpen(selected.id) })
+                            TagManagerRow("−", "Remove from chats", "Keep all conversations", {
+                                onClearChats(selected.id)
+                            })
+                            TagManagerRow("✕", "Delete tag", "", { confirmDelete = true })
+                            if (confirmDelete) {
+                                Spacer(Modifier.weight(1f))
+                                androidx.compose.material3.Text("Delete this tag?", style = MaterialTheme.typography.titleLarge)
+                                androidx.compose.material3.Text("Chats will remain, only the tag will be removed.")
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    OutlinedButton(onClick = { confirmDelete = false }, modifier = Modifier.weight(1f)) {
+                                        androidx.compose.material3.Text("Cancel")
+                                    }
+                                    Button(onClick = {
+                                        onDelete(selected.id)
+                                        selectedId = null
+                                        confirmDelete = false
+                                        page = "manage"
+                                    }, modifier = Modifier.weight(1f)) { androidx.compose.material3.Text("Delete tag") }
+                                }
                             }
                         }
                     }
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = newTagName.isNotBlank() && state.customTags.size < 3,
-                    onClick = {
-                        state.eventSink(RoomListFiltersEvent.CreateCustomTag(newTagName))
-                        newTagName = ""
-                    },
-                ) {
-                    androidx.compose.material3.Text("Create")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showTagManager = false }) {
-                    androidx.compose.material3.Text("Done")
-                }
-            },
-        )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagManagerRow(symbol: String, title: String, subtitle: String, onClick: () -> Unit) {
+    Surface(
+        color = ElementTheme.colors.bgSubtleSecondary,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            androidx.compose.material3.Text(symbol, style = MaterialTheme.typography.titleLarge)
+            Column(modifier = Modifier.weight(1f)) {
+                androidx.compose.material3.Text(title)
+                if (subtitle.isNotEmpty()) androidx.compose.material3.Text(subtitle, color = ElementTheme.colors.textSecondary)
+            }
+            androidx.compose.material3.Text("›")
+        }
     }
 }
 
