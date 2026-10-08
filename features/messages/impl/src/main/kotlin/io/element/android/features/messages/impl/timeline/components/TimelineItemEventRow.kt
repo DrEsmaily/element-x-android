@@ -365,6 +365,8 @@ fun TimelineItemEventRow(
                         },
                         style = ElementTheme.typography.fontBodySmMedium,
                         color = ElementTheme.colors.textSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Box(
                         modifier = Modifier
