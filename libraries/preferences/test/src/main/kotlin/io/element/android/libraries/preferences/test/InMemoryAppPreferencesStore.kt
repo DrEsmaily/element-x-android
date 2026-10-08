@@ -199,6 +199,18 @@ class InMemoryAppPreferencesStore(
         return id
     }
 
+    override suspend fun renameCustomRoomTag(tagId: String, name: String): Boolean {
+        val normalized = name.trim().take(32)
+        if (normalized.isBlank() || customRoomTags.value.any { it.id != tagId && it.name.equals(normalized, ignoreCase = true) }) return false
+        if (customRoomTags.value.none { it.id == tagId }) return false
+        customRoomTags.value = customRoomTags.value.map { if (it.id == tagId) it.copy(name = normalized) else it }
+        return true
+    }
+
+    override suspend fun clearCustomRoomTagChats(tagId: String) {
+        customRoomTags.value = customRoomTags.value.map { if (it.id == tagId) it.copy(roomIds = emptySet()) else it }
+    }
+
     override suspend fun deleteCustomRoomTag(tagId: String) {
         customRoomTags.value = customRoomTags.value.filterNot { it.id == tagId }
         if (activeCustomRoomTagId.value == tagId) activeCustomRoomTagId.value = null
