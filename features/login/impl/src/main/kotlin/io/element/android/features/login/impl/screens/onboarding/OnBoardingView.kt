@@ -237,7 +237,7 @@ private fun OnBoardingContent(state: OnBoardingState) {
             Text(
                 text = "Stay connected, Stay private",
                 color = ElementTheme.colors.textPrimary,
-                style = ElementTheme.typography.fontBodyLgMedium,
+                style = ElementTheme.typography.fontBodyMdRegular,
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(6.dp))
@@ -251,7 +251,7 @@ private fun OnBoardingContent(state: OnBoardingState) {
         Text(
             text = "by 0x07c4",
             color = ElementTheme.colors.textSecondary,
-            style = ElementTheme.typography.fontBodySmRegular,
+            style = ElementTheme.typography.fontBodyMdRegular,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
