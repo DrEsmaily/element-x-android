@@ -296,8 +296,13 @@ private fun TimelinePrefetchingHelper(
 
     LaunchedEffect(Unit) {
         // We're using snapshot flows for these because using `LaunchedEffect` with `derivedState` doesn't seem to be responsive enough
-        val firstVisibleItemIndexFlow = snapshotFlow { lazyListState.firstVisibleItemIndex }
-        val layoutInfoFlow = snapshotFlow { lazyListState.layoutInfo }
+        // Observe only meaningful pagination thresholds, not every layoutInfo update during pixel scrolling.
+        val isCloseToStartOfLoadedTimelineFlow = snapshotFlow {
+            val layout = lazyListState.layoutInfo
+            lazyListState.firstVisibleItemIndex + layout.visibleItemsInfo.size >= layout.totalItemsCount - 40
+        }.distinctUntilChanged()
+        val isEmptyTimelineFlow = snapshotFlow { lazyListState.layoutInfo.totalItemsCount == 0 }
+            .distinctUntilChanged()
         val isScrollingFlow = snapshotFlow { lazyListState.isScrollInProgress }
             // This value changes too frequently, so we debounce it to avoid unnecessary prefetching. It's the equivalent of a conditional 'throttleLatest'
             .conflate()
@@ -306,13 +311,7 @@ private fun TimelinePrefetchingHelper(
                 if (isScrolling) delay(100.milliseconds)
             }
 
-        val isCloseToStartOfLoadedTimelineFlow = combine(layoutInfoFlow, firstVisibleItemIndexFlow) { layoutInfo, firstVisibleItemIndex ->
-            firstVisibleItemIndex + layoutInfo.visibleItemsInfo.size >= layoutInfo.totalItemsCount - 40
-        }
-
-        // If we have no timeline items, we need to back paginate to load some messages. This usually happens on all timelines except for live ones.
-        // This automatic pagination was previously done by the SDK, and we received a `Reset` update, but now we need to do it ourselves.
-        val isEmptyTimelineFlow = layoutInfoFlow.map { it.totalItemsCount == 0 }
+        // Empty timelines still trigger initial backward pagination.
 
         combine(
             isCloseToStartOfLoadedTimelineFlow.distinctUntilChanged(),
