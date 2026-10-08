@@ -59,6 +59,7 @@ import io.element.android.libraries.designsystem.theme.components.HorizontalDivi
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.ListItem
+import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.CommonDrawables
 import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
@@ -145,6 +146,11 @@ fun PreferencesRootView(
                 onOpenLockScreenSettings = onOpenLockScreenSettings,
                 onOpenMediaSettings = onOpenMediaSettings,
                 onOpenLocationSettings = onOpenLocationSettings,
+            )
+            DestructiveAccountSection(
+                canDeactivateAccount = state.preferencesAccountState.canDeactivateAccount,
+                onSignOutClick = onSignOutClick,
+                onDeactivateClick = onDeactivateClick,
             )
             // General section
             GeneralSection(
@@ -323,6 +329,32 @@ ListItem(
             content = { Text(stringResource(id = CommonStrings.common_location_sharing)) },
             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.LocationPin())),
             onClick = onOpenLocationSettings,
+        )
+    }
+}
+
+@Composable
+private fun ColumnScope.DestructiveAccountSection(
+    canDeactivateAccount: Boolean,
+    onSignOutClick: () -> Unit,
+    onDeactivateClick: () -> Unit,
+) {
+    HorizontalDivider(
+        thickness = 1.dp,
+        color = ElementTheme.colors.bgSubtleSecondary,
+    )
+    ListItem(
+        content = { Text(stringResource(id = CommonStrings.action_signout)) },
+        leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Close())),
+        style = ListItemStyle.Destructive,
+        onClick = onSignOutClick,
+    )
+    if (canDeactivateAccount) {
+        ListItem(
+            content = { Text(stringResource(id = CommonStrings.action_delete_account)) },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Delete())),
+            style = ListItemStyle.Destructive,
+            onClick = onDeactivateClick,
         )
     }
 }
