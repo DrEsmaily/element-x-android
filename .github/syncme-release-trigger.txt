@@ -12,3 +12,5 @@ Build full-screen tags manager with icons, rename, clear, delete and scroll rest
 Explicit release after branch workflow registration.
 
 Final release dispatch marker for tags page workflow.
+
+Release request after registering branch in existing workflow.
