@@ -4,3 +4,5 @@ Source commit before trigger: 219e927a6ad38b3718fb03a3593b69f0f74d0241
 This is the single explicit release trigger for this branch after applying shared changes.
 
 Release stable Build 160 with Option 3 (#1B2028) colors only. No UI performance changes.
+
+Release after #163: SyncMe-branded single-login onboarding; hide space UI and room space controls.
