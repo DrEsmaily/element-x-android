@@ -1,0 +1,28 @@
+SYNCME CONTINUATION MASTER — 2026-10-08
+Repository: https://github.com/DrEsmaily/element-x-android
+Main branch: syncme-main
+Last confirmed successful SyncMe build prior to current batch: #77, SHA 79cc969595a26bbf4e8aa1919213a4d83512b293.
+Source is a fork of element-hq/element-x-android. Release is :app:assembleGplayRelease with package suffix .syncmerelease.
+This document specifies intended behavior; commit log shows implementation, and a successful APK build alone does not verify runtime behavior.
+
+RESOLVED NETWORK SPEED MISDIAGNOSIS
+The approximately 10x upload speed difference versus Google Play was caused by different VPN routing: Play bypassed VPN, self-built APKs used VPN. With VPN disabled, clean upstream build uploaded quickly. Do not change Matrix Rust SDK purely to fix this speed discrepancy.
+
+P0 UPLOAD RELIABILITY — NOT YET VERIFIED FIXED
+Observed: large file upload stalls midstream, reverts from around 88% to 12%, loops/retries unexpectedly and sometimes never completes, while data transfers. Differentiate retry of same Matrix transaction from multiple enqueued local echoes. Diagnose Matrix send-queue lifecycle and HTTP upload attempts; avoid unlimited automatic retry and misleading jumps. Preserve data integrity; cancellation must cancel actual queued send, not just dismiss UI. Investigate messages behind a stalled upload in queue. Repeated upload UI events now have an active-job guard, but SDK stall/retry loop is NOT proven fixed. Upstream sending path restored; duplicate progress collectors removed. Need controlled on-device testing, logs, and retry-attempt evidence.
+
+UPLOAD PROGRESS UI
+Use SDK LocalEventSendState.Sending.MediaWithProgress as source; accurate percentage and bytes, no false 1B/100% or forced minimum 1%. Progress track should begin and end exactly at file/video bubble edges (including alignment/constraints), thickness stays 3dp. Retry, stall, cancel should be clearly represented. Do not silently reset high % to low %. Bubble sizing should not break with two lines of emojis; avoid extra width for short text.
+
+NAVIGATION / PERFORMANCE
+Open a chat as promptly and smoothly as Settings/Menu. General screen transitions tween(150ms); room navigation now fast 150ms fade instead of slide. HomeFlowNode guards getJoinedRoom with 50ms timeout then navigates. Confirm RoomFlowNode / JoinedRoomFlowNode initial shell and loading are not perceived as extra lag; test warm/cold room opening and return transitions on device. Release build with R8 optimization, not Debug.
+
+LONG PRESS / CANCEL / SHEETS
+During active media send, present explicit Cancel upload instead of ambiguous Remove; route through Matrix send-queue cancellation. Long-press bottom sheet must fully clear Android navigation bar and last destructive action remain touchable. Ensure true OLED black modal background/scrim behavior and media viewer background (#000000), without unwanted gray overlay.
+
+HOME / TAGS / BRAND
+Spaces navigation, buttons, page and create-space UI hidden, keep underlying Matrix Spaces capability. Chats-only main screen; standard bottom-end FAB (+) on right, not centered. Title SyncMe. Preserve Unread, People, Rooms, Favorites filters. Add persistent custom multi-room tags (create/delete, multi-tag per chat, persistent active selection until manually cleared, auto-fallback to All when active tag deleted), horizontal chips, context-menu assignment, storage in preferences/DataStore. Keep Deep Cobalt accents and black theme; prior palette, moderation/safety placement and red indicator choices.
+First-run homeserver syncme.ir. Developer Options hidden normally, unlock by five taps on app version. Media send choice Original / Compressed with specs; remove duplicate Media Upload Quality setting. Preserve agreed defaults.
+
+BUILD / VERIFICATION
+Prior #78 and subsequent builds had Kotlin errors; compile success and on-device verification are separate. CI run is authoritative for exact SHA and artifacts. Keep checkpoint TXT in same GitHub Actions artifact as APK, including SHA, run, full git log and changed paths; on failure publish TXT alone. For continuing conversation: read newest checkpoint, inspect GitHub run, compare against #77 and latest upstream, fix build failures, test upload lifecycle first, then room opening and UI, report honestly. Never claim fully fixed without evidence.
