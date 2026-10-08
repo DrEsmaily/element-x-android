@@ -197,6 +197,12 @@ class RustMatrixClient(
     override val sessionCoroutineScope = appCoroutineScope.childScope(dispatchers.main, "Session-$sessionId")
     private val sessionDispatcher = dispatchers.io.limitedParallelism(64)
 
+    init {
+        // Matrix Rust SDK disables intermediate send-queue media upload progress by default.
+        // SyncMe needs the actual in-flight values so the UI can render 0..100% in real time.
+        innerClient.enableSendQueueUploadProgress(true)
+    }
+
     private val innerRoomListService = innerSyncService.roomListService()
 
     // TODO refactor this and `innerNotificationClient` to be behind a suspend function instead
