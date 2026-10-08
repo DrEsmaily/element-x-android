@@ -23,6 +23,7 @@ data class CustomRoomTag(
     val id: String,
     val name: String,
     val roomIds: Set<String>,
+    val icon: String = "◈",
 )
 
 interface AppPreferencesStore {
@@ -161,7 +162,7 @@ interface AppPreferencesStore {
     fun getActiveCustomRoomTagIdFlow(): Flow<String?>
 
     /** Creates a tag and returns its stable id, or null for blank/duplicate names. */
-    suspend fun createCustomRoomTag(name: String): String?
+    suspend fun createCustomRoomTag(name: String, icon: String = "◈"): String?
 
     /** Deletes a tag and clears the active selection when it points to this tag. */
     suspend fun renameCustomRoomTag(tagId: String, name: String): Boolean
