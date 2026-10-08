@@ -290,7 +290,7 @@ class DefaultAppPreferencesStore(
         }
     }
 
-    override suspend fun createCustomRoomTag(name: String): String? {
+    override suspend fun createCustomRoomTag(name: String, icon: String): String? {
         val normalizedName = name.trim().take(MAX_CUSTOM_ROOM_TAG_NAME_LENGTH)
         if (normalizedName.isBlank()) return null
         var createdId: String? = null
@@ -299,7 +299,7 @@ class DefaultAppPreferencesStore(
             if (existing.size >= MAX_CUSTOM_ROOM_TAGS) return@edit
             if (existing.any { it.name.equals(normalizedName, ignoreCase = true) }) return@edit
             val id = java.util.UUID.randomUUID().toString()
-            prefs.writeCustomRoomTags(existing + CustomRoomTag(id, normalizedName, emptySet()))
+            prefs.writeCustomRoomTags(existing + CustomRoomTag(id, normalizedName, emptySet(), icon.take(2)))
             createdId = id
         }
         return createdId
@@ -370,7 +370,7 @@ private fun Preferences.readCustomRoomTags(): List<CustomRoomTag> {
     if (raw.isEmpty()) return emptyList()
     return raw.split(CUSTOM_TAG_RECORD_SEPARATOR)
         .mapNotNull { record ->
-            val parts = record.split(CUSTOM_TAG_FIELD_SEPARATOR, limit = 3)
+            val parts = record.split(CUSTOM_TAG_FIELD_SEPARATOR, limit = 4)
             if (parts.size < 2) return@mapNotNull null
             val id = parts[0]
             val name = parts[1]
@@ -380,7 +380,7 @@ private fun Preferences.readCustomRoomTags(): List<CustomRoomTag> {
                 .split(CUSTOM_TAG_ROOM_SEPARATOR)
                 .filter { it.isNotEmpty() }
                 .toSet()
-            CustomRoomTag(id = id, name = name, roomIds = roomIds)
+            CustomRoomTag(id = id, name = name, roomIds = roomIds, icon = parts.getOrNull(3)?.takeIf { it.isNotBlank() } ?: "◈")
         }
         .take(MAX_CUSTOM_ROOM_TAGS)
 }
@@ -394,7 +394,7 @@ private fun androidx.datastore.preferences.core.MutablePreferences.writeCustomRo
         val safeRooms = tag.roomIds
             .map { it.replace(CUSTOM_TAG_ROOM_SEPARATOR, "") }
             .joinToString(CUSTOM_TAG_ROOM_SEPARATOR)
-        listOf(tag.id, safeName, safeRooms).joinToString(CUSTOM_TAG_FIELD_SEPARATOR)
+        listOf(tag.id, safeName, safeRooms, tag.icon.replace(CUSTOM_TAG_FIELD_SEPARATOR, "").replace(CUSTOM_TAG_RECORD_SEPARATOR, "")).joinToString(CUSTOM_TAG_FIELD_SEPARATOR)
     }
 }
 
