@@ -212,8 +212,12 @@ fun RoomListFiltersView(
                         onValueChange = { newTagName = it.take(32) },
                         singleLine = true,
                         label = { androidx.compose.material3.Text("New tag") },
+                        enabled = state.customTags.size < 3,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    if (state.customTags.size >= 3) {
+                        androidx.compose.material3.Text("Maximum 3 personal tags. Delete a tag to create another.")
+                    }
                     state.customTags.forEach { tag ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -237,7 +241,7 @@ fun RoomListFiltersView(
             },
             confirmButton = {
                 TextButton(
-                    enabled = newTagName.isNotBlank(),
+                    enabled = newTagName.isNotBlank() && state.customTags.size < 3,
                     onClick = {
                         state.eventSink(RoomListFiltersEvent.CreateCustomTag(newTagName))
                         newTagName = ""
