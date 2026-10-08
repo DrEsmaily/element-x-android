@@ -89,6 +89,7 @@ fun HomeView(
             RoomListContextMenu(
                 contextMenu = state.contextMenu,
                 canReportRoom = state.canReportRoom,
+                customTags = state.filtersState.customTags,
                 eventSink = state.eventSink,
                 onRoomSettingsClick = onRoomSettingsClick,
                 onReportRoomClick = onReportRoomClick,
