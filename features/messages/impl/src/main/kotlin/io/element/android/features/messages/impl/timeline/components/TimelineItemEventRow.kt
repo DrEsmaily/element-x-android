@@ -376,7 +376,7 @@ fun TimelineItemEventRow(
                     ) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(fraction.coerceAtLeast(0.01f))
+                                .fillMaxWidth(fraction)
                                 .height(3.dp)
                                 .background(ElementTheme.colors.textPrimary),
                         )
