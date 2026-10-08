@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - syncme-main
+      - syncme-ab-standard
+      - syncme-ab-smooth
 
 permissions:
   contents: read
