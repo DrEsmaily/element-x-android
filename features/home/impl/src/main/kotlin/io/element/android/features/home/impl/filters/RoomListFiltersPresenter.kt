@@ -55,6 +55,12 @@ class RoomListFiltersPresenter(
                         }
                     }
                 }
+                is RoomListFiltersEvent.RenameCustomTag -> {
+                    coroutineScope.launch { appPreferencesStore.renameCustomRoomTag(event.tagId, event.name) }
+                }
+                is RoomListFiltersEvent.ClearCustomTagChats -> {
+                    coroutineScope.launch { appPreferencesStore.clearCustomRoomTagChats(event.tagId) }
+                }
                 is RoomListFiltersEvent.DeleteCustomTag -> {
                     coroutineScope.launch {
                         appPreferencesStore.deleteCustomRoomTag(event.tagId)
