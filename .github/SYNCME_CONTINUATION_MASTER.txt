@@ -15,6 +15,7 @@ UPLOAD PROGRESS UI
 Use SDK LocalEventSendState.Sending.MediaWithProgress as source; accurate percentage and bytes, no false 1B/100% or forced minimum 1%. Progress track should begin and end exactly at file/video bubble edges (including alignment/constraints), thickness stays 3dp. Retry, stall, cancel should be clearly represented. Do not silently reset high % to low %. Bubble sizing should not break with two lines of emojis; avoid extra width for short text.
 
 NAVIGATION / PERFORMANCE
+Latest user feedback: 150ms chat fade feels sluggish/laggy despite faster navigation. Room-specific fader shortened to 90ms (commit 5191fafe); menu/other slides remain 150ms. Must test frame pacing and perceived opening speed on device; if lag persists profile RoomFlowNode/JoinedRoomFlowNode composition, not merely shorten animation again.
 Open a chat as promptly and smoothly as Settings/Menu. General screen transitions tween(150ms); room navigation now fast 150ms fade instead of slide. HomeFlowNode guards getJoinedRoom with 50ms timeout then navigates. Confirm RoomFlowNode / JoinedRoomFlowNode initial shell and loading are not perceived as extra lag; test warm/cold room opening and return transitions on device. Release build with R8 optimization, not Debug.
 
 LONG PRESS / CANCEL / SHEETS
