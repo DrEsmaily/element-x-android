@@ -19,6 +19,12 @@ import kotlinx.coroutines.flow.Flow
  * Each getter returns a flow that emits the current value straight away and then again on every change.
  * The default each preference falls back to when it has never been set is given on the getter.
  */
+data class CustomRoomTag(
+    val id: String,
+    val name: String,
+    val roomIds: Set<String>,
+)
+
 interface AppPreferencesStore {
     /**
      * @param enabled true to expose the developer options in the settings.
@@ -147,6 +153,24 @@ interface AppPreferencesStore {
 
     /** Single-snapshot read of all sound prefs; used at boot to seed channels without N reads. */
     suspend fun getNotificationSoundChannelConfig(): NotificationSoundChannelConfig
+
+    /** Locally stored SyncMe room tags. These never leave the device. */
+    fun getCustomRoomTagsFlow(): Flow<List<CustomRoomTag>>
+
+    /** The selected custom room tag, or null when no custom tag filter is active. */
+    fun getActiveCustomRoomTagIdFlow(): Flow<String?>
+
+    /** Creates a tag and returns its stable id, or null for blank/duplicate names. */
+    suspend fun createCustomRoomTag(name: String): String?
+
+    /** Deletes a tag and clears the active selection when it points to this tag. */
+    suspend fun deleteCustomRoomTag(tagId: String)
+
+    /** Selects a custom tag filter. Pass null to clear it. */
+    suspend fun setActiveCustomRoomTagId(tagId: String?)
+
+    /** Adds/removes [roomId] from [tagId]. */
+    suspend fun toggleRoomInCustomTag(tagId: String, roomId: String)
 
     /** Erases every app preference, so they all fall back to their defaults. */
     suspend fun reset()
