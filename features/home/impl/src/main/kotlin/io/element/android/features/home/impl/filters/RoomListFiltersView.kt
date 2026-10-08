@@ -110,7 +110,7 @@ fun RoomListFiltersView(
         if (state.activeCustomTagId != null) {
             // Jump once to the selected chip's new leading slot. The old animated
             // scroll raced the LazyRow item animation and looked like a rewind.
-            lazyListState.scrollToItem(1 + state.filterSelectionStates.size)
+            lazyListState.animateScrollToItem(0)
         }
     }
     LazyRow(
@@ -136,6 +136,17 @@ fun RoomListFiltersView(
                 )
             }
         }
+        // Selected tag is a genuinely leading chip, not merely a scrolled trailing chip.
+        orderedCustomTags.firstOrNull { it.id == state.activeCustomTagId }?.let { tag ->
+            item("custom_tag_${tag.id}") {
+                RoomListCustomTagView(
+                    tag = tag,
+                    selected = true,
+                    modifier = Modifier.animateItem(),
+                    onClick = { state.eventSink(RoomListFiltersEvent.SelectCustomTag(tag.id)) },
+                )
+            }
+        }
         state.filterSelectionStates.forEachIndexed { i, filterWithSelection ->
             item(filterWithSelection.filter) {
                 val zIndex = (if (previousFilters.value.contains(filterWithSelection.filter)) state.filterSelectionStates.size else 0) - i.toFloat()
@@ -155,7 +166,7 @@ fun RoomListFiltersView(
                 )
             }
         }
-        orderedCustomTags.forEach { tag ->
+        orderedCustomTags.filterNot { it.id == state.activeCustomTagId }.forEach { tag ->
             item("custom_tag_${tag.id}") {
                 RoomListCustomTagView(
                     tag = tag,
