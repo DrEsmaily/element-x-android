@@ -180,7 +180,7 @@ private fun RoomListModalBottomSheetContent(
                         )
                     },
                     leadingContent = ListItemContent.Icon(
-                        iconSource = IconSource.Vector(CompoundIcons.Tag())
+                        iconSource = IconSource.Vector(CompoundIcons.Folder())
                     ),
                     trailingContent = ListItemContent.Switch(
                         checked = checked,
