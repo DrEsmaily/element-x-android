@@ -119,14 +119,6 @@ fun ActionListView(
     val coroutineScope = rememberCoroutineScope()
     val targetItem = (state.target as? ActionListState.Target.Success)?.event
 
-    // The default Material sheet can stop at its partially-expanded anchor, leaving
-    // the last message actions hidden on shorter devices. Expand after presentation.
-    LaunchedEffect(targetItem) {
-        if (targetItem != null) {
-            sheetState.expand()
-        }
-    }
-
     fun onItemActionClick(
         itemAction: TimelineItemAction
     ) {
