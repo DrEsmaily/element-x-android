@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -62,6 +63,7 @@ import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.LayoutDirection
@@ -208,6 +210,10 @@ fun TimelineItemEventRow(
     val coroutineScope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val bubbleWidthPx = remember { mutableIntStateOf(0) }
+    // Let a narrow file bubble grow enough to display its upload status on one line.
+    val uploadBubbleMinWidth = if (mediaUploadProgress != null) {
+        minOf(300.dp, (LocalConfiguration.current.screenWidthDp - 48).coerceAtLeast(180).dp)
+    } else null
 
     val onContentClick = if (event.mustBeProtected()) {
         // In this case, let the content handle the click
@@ -283,6 +289,8 @@ fun TimelineItemEventRow(
                             ),
                         eventSink = eventSink,
                         onBubbleWidthChanged = { bubbleWidthPx.intValue = it },
+                uploadBubbleMinWidth = uploadBubbleMinWidth,
+                        uploadBubbleMinWidth = uploadBubbleMinWidth,
                         eventContentView = eventContentView,
                     )
                 }
@@ -547,6 +555,7 @@ private fun TimelineItemEventRowContent(
     onMoreReactionsClick: (event: TimelineItem.Event) -> Unit,
     eventSink: (TimelineEvent.TimelineItemEvent) -> Unit,
     onBubbleWidthChanged: (Int) -> Unit,
+    uploadBubbleMinWidth: Dp?,
     modifier: Modifier = Modifier,
     eventContentView: @Composable (Modifier, (ContentAvoidingLayoutData) -> Unit) -> Unit,
 ) {
@@ -610,6 +619,7 @@ private fun TimelineItemEventRowContent(
         )
         MessageEventBubble(
             modifier = Modifier
+                .then(if (uploadBubbleMinWidth != null) Modifier.widthIn(min = uploadBubbleMinWidth) else Modifier)
                 .onSizeChanged { onBubbleWidthChanged(it.width) }
                 .constrainAs(message) {
                     val topMargin = if (bubbleState.cutTopStart) {
