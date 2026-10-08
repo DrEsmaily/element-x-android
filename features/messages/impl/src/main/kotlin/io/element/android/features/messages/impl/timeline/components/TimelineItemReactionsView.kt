@@ -81,8 +81,8 @@ private fun TimelineItemReactionsView(
     CompositionLocalProvider(LocalLayoutDirection provides reactionsLayoutDirection) {
         TimelineItemReactionsLayout(
             modifier = modifier,
-            itemSpacing = 4.dp,
-            rowSpacing = 4.dp,
+            itemSpacing = 5.dp,
+            rowSpacing = 5.dp,
             expanded = expanded,
             expandButton = {
                 MessagesReactionButton(
