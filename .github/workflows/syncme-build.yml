@@ -59,6 +59,8 @@ jobs:
         uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6
 
       - name: Build optimized SyncMe release APK
+        env:
+          SYNCME_BUILD_NUMBER: ${{ github.run_number }}
         run: ./gradlew :app:assembleGplayRelease -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
 
       - name: Generate full per-build continuation TXT
