@@ -83,6 +83,8 @@ fun HomeView(
     val state: RoomListState = homeState.roomListState
     val coroutineScope = rememberCoroutineScope()
     val firstThrottler = remember { FirstThrottler(300, coroutineScope) }
+    // Use a short room-specific tap guard; keep longer throttling for menus/settings.
+    val roomThrottler = remember { FirstThrottler(100, coroutineScope) }
     Box(modifier) {
         if (state.contextMenu is RoomListState.ContextMenu.Shown) {
             RoomListContextMenu(
@@ -116,7 +118,7 @@ fun HomeView(
             state = homeState,
             onSetUpRecoveryClick = onSetUpRecoveryClick,
             onConfirmRecoveryKeyClick = onConfirmRecoveryKeyClick,
-            onRoomClick = { roomId -> onRoomClick(roomId, null) },
+            onRoomClick = { roomId -> if (roomThrottler.canHandle()) onRoomClick(roomId, null) },
             onOpenSettings = { if (firstThrottler.canHandle()) onSettingsClick() },
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
