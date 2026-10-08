@@ -160,8 +160,9 @@ class TimelinePresenter(
         // RoomInfo update racing the mark-as-read call has already landed and can't undo this.
         val suppressJumpToUnread = remember { mutableStateOf(false) }
 
-        // Subscribe to media upload updates only while this timeline actually contains
-        // a local media event. This keeps the room-open path identical when nothing uploads.
+        // Subscribe from the moment the room timeline is presented, not only after the local
+        // media echo appears. MediaUpload updates can start before Compose has rendered that echo;
+        // subscribing late caused the first visible value to be near 100%.
         val mediaUploadProgress = remember { mutableStateMapOf<TransactionId, Float>() }
         val activeMediaTransactionIds = remember(timelineItems) {
             timelineItems.asSequence()
@@ -170,25 +171,31 @@ class TimelinePresenter(
                 .mapNotNull { it.transactionId }
                 .toSet()
         }
+
+        // Give a newly rendered local media event an immediate 0% state if no SDK progress
+        // callback has arrived yet. If early callbacks were already cached, keep their value.
         LaunchedEffect(activeMediaTransactionIds) {
+            activeMediaTransactionIds.forEach { transactionId ->
+                mediaUploadProgress.putIfAbsent(transactionId, 0f)
+            }
             mediaUploadProgress.keys
                 .filterNot { it in activeMediaTransactionIds }
+                .filter { mediaUploadProgress[it] == 0f }
                 .forEach(mediaUploadProgress::remove)
+        }
 
-            if (activeMediaTransactionIds.isEmpty()) {
-                return@LaunchedEffect
-            }
-
+        LaunchedEffect(room.roomId) {
             room.subscribeToSendQueueUpdates().collect { update ->
                 when (update) {
                     is SendQueueUpdate.MediaUpload -> {
-                        if (update.relatedTo in activeMediaTransactionIds) {
-                            val progress = update.progress
-                                .takeIf { it.isFinite() }
-                                ?.coerceIn(0f, 1f)
-                                ?: return@collect
-                            mediaUploadProgress[update.relatedTo] = progress
-                        }
+                        val progress = update.progress
+                            .takeIf { it.isFinite() }
+                            ?.coerceIn(0f, 1f)
+                            ?: return@collect
+                        // Upload progress must never move backwards. Cache updates even before
+                        // the local echo is rendered so the first visible frame is already current.
+                        val previous = mediaUploadProgress[update.relatedTo] ?: 0f
+                        mediaUploadProgress[update.relatedTo] = maxOf(previous, progress)
                     }
                     is SendQueueUpdate.SentEvent -> mediaUploadProgress.remove(update.transactionId)
                     is SendQueueUpdate.CancelledLocalEvent -> mediaUploadProgress.remove(update.transactionId)
