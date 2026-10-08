@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -213,13 +214,13 @@ private fun ExoPlayerMediaVideoView(
     KeepScreenOn(mediaPlayerControllerState.isPlaying)
     Box(
         modifier = modifier
-            .background(ElementTheme.colors.bgSubtlePrimary),
+            .background(Color.Black),
     ) {
         val context = LocalContext.current
         if (LocalInspectionMode.current) {
             Text(
                 modifier = Modifier
-                    .background(ElementTheme.colors.bgSubtlePrimary)
+                    .background(Color.Black)
                     .align(Alignment.Center),
                 text = "A Video Player will render here",
             )
