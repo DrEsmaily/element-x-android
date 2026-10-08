@@ -152,7 +152,7 @@ private fun RoomMemberList(
                         }
                     }
                 }
-                AnimatedVisibility(visible = roomMembersData.isLoading()) {
+                AnimatedVisibility(visible = roomMembersData.isLoading() && roomMembersData.dataOrNull() == null) {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
             }
