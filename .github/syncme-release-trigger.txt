@@ -24,3 +24,5 @@ Build crisp vector welcome logo and unified tag system icons.
 Release following successful Build 170: hide home custom tag chip icons; hide manage-list custom tag chat counts. UI only.
 
 Build 172: tag auto-scroll, short local username search, SyncMe by 0x07c4 footer, Powered by Matrix login subtitle, GitHub run-number Android version.
+
+Build 173: automatic RTL layout for Persian/Arabic polls; hide room-members progress indicator when cached members are already displayed.
