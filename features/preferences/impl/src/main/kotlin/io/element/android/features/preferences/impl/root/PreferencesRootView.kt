@@ -235,7 +235,8 @@ private fun ColumnScope.MultiAccountSection(
             Row(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp),
+                    // Center on header text; header reserves space above its top divider.
+                    .padding(end = 16.dp, top = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
