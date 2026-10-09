@@ -37,3 +37,4 @@ SyncMe 179: resolve Kotlin delegate and Timber imports found by release 178 comp
 
 SyncMe next release: remove only custom duplicate directory controls; preserve directory loading and search fixes.
 SyncMe clean release candidate from Build 180 with optional on-demand presence only; verify login/sync isolation.
+SyncMe clean candidate: all Presence endpoints disabled until SyncState.Running; preserve Build 180 sync path.
