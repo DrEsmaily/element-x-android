@@ -144,6 +144,11 @@ import org.matrix.rustcomponents.sdk.TaskHandle
 import org.matrix.rustcomponents.sdk.UserProfile
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
+import io.element.android.libraries.matrix.api.user.UserPresence
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import org.json.JSONObject
 import java.io.File
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicBoolean
@@ -207,6 +212,40 @@ class RustMatrixClient(
 
     // TODO refactor this and `innerNotificationClient` to be behind a suspend function instead
     private val innerSpaceService = runBlocking { innerClient.spaceService() }
+
+    // Never touches login, syncing, presence publishing, or the Rust SDK transport.
+    private val presenceIo = kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)
+    override suspend fun getPresence(userId: UserId): UserPresence =
+        kotlinx.coroutines.withContext(presenceIo) {
+            if (syncService.syncState.value != SyncState.Running) return@withContext UserPresence.Unknown
+            val session = sessionStore.getSession(sessionId.value) ?: return@withContext UserPresence.Unknown
+            runCatching {
+                val url = homeserverUrl.trimEnd('/') +
+                    "/_matrix/client/v3/presence/" +
+                    URLEncoder.encode(userId.value, "UTF-8") + "/status"
+                val connection = URL(url).openConnection() as HttpURLConnection
+                try {
+                    connection.requestMethod = "GET"
+                    connection.connectTimeout = 2500
+                    connection.readTimeout = 2500
+                    connection.setRequestProperty("Authorization", "Bearer " + session.accessToken)
+                    if (connection.responseCode != 200) UserPresence.Unknown else {
+                        val json = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                        when (json.optString("presence")) {
+                            "online" -> UserPresence.Online
+                            "unavailable" -> UserPresence.Away
+                            "offline" -> {
+                                val ago = json.optLong("last_active_ago", -1L)
+                                UserPresence.Offline(if (ago >= 0L) System.currentTimeMillis() - ago else null)
+                            }
+                            else -> UserPresence.Unknown
+                        }
+                    }
+                } finally {
+                    connection.disconnect()
+                }
+            }.getOrDefault(UserPresence.Unknown)
+        }
 
     override val roomMembershipObserver = RoomMembershipObserver()
 
