@@ -309,7 +309,7 @@ class RustMatrixClient(
         )
         while (kotlin.coroutines.coroutineContext.isActive) {
             val session = sessionStore.getSession(sessionId.value) ?: break
-            val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=30000" +
+            val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=30000&set_presence=offline" +
                 "&filter=" + filter + (since?.let { "&since=" + URLEncoder.encode(it, "UTF-8") } ?: "")
             var connection: HttpURLConnection? = null
             try {
