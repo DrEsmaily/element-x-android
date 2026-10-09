@@ -143,10 +143,10 @@ class RoomMemberListPresenter(
 
 
         val presenceTargets = filteredRoomMembers.dataOrNull()?.joined
-            ?.map { it.roomMember.userId.value }?.take(30).orEmpty()
+            ?.map { it.roomMember.userId.value }?.take(12).orEmpty()
         val onlineUserIds by produceState<Set<String>>(emptySet(), presenceTargets) {
             if (presenceTargets.isNotEmpty()) {
-                val limiter = Semaphore(5)
+                val limiter = Semaphore(2)
                 while (true) {
                     val current = coroutineScope {
                         presenceTargets.map { id ->
