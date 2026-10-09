@@ -26,6 +26,14 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.map
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
 import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.user.UserPresence
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.room.JoinedRoom
@@ -49,6 +57,7 @@ import kotlinx.coroutines.withContext
 @Inject
 class RoomMemberListPresenter(
     private val room: JoinedRoom,
+    private val client: MatrixClient,
     private val coroutineDispatchers: CoroutineDispatchers,
     private val roomMembersModerationPresenter: Presenter<RoomMemberModerationState>,
     private val encryptionService: EncryptionService,
@@ -132,6 +141,26 @@ class RoomMemberListPresenter(
             }
         }
 
+
+        val presenceTargets = filteredRoomMembers.dataOrNull()?.joined
+            ?.map { it.roomMember.userId.value }?.take(30).orEmpty()
+        val onlineUserIds by produceState<Set<String>>(emptySet(), presenceTargets) {
+            if (presenceTargets.isNotEmpty()) {
+                val limiter = Semaphore(5)
+                while (true) {
+                    val current = coroutineScope {
+                        presenceTargets.map { id ->
+                            async {
+                                id to limiter.withPermit { client.getPresence(UserId(id)) }
+                            }
+                        }.awaitAll()
+                    }
+                    value = current.filter { it.second is UserPresence.Online }.map { it.first }.toSet()
+                    delay(60_000)
+                }
+            }
+        }
+
         fun handleEvent(event: RoomMemberListEvent) {
             when (event) {
                 is RoomMemberListEvent.RoomMemberSelected ->
@@ -148,6 +177,7 @@ class RoomMemberListPresenter(
             moderationState = roomModerationState,
             selectedSection = selectedSection,
             eventSink = ::handleEvent,
+            onlineUserIds = onlineUserIds,
         )
         if (!state.showBannedSection && selectedSection == SelectedSection.BANNED) {
             SideEffect {
