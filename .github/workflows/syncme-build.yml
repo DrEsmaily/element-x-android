@@ -7,6 +7,7 @@ on:
       - syncme-164-tags-pages
       - syncme-178-from-176
       - syncme-199-presence-clean-180
+      - syncme-204-presence-centralized
     paths:
       - '.github/syncme-release-trigger.txt'
 
@@ -76,6 +77,22 @@ jobs:
           file=libraries/matrix/impl/src/main/kotlin/io/element/android/libraries/matrix/impl/RustMatrixClient.kt
           ! grep -Eq 'processPresenceObserver|setPresence\(|sessionIdFlow' "$file"
           grep -F 'override suspend fun getPresence' "$file"
+
+      - name: Inspect exact Rust SDK Presence API
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "=== Installed SDK Android AARs ==="
+          find "$HOME/.gradle/caches/modules-2/files-2.1/org.matrix.rustcomponents/sdk-android" -name '*.aar' -print 2>/dev/null || true
+          echo "=== Presence classes and method signatures ==="
+          aar=$(find "$HOME/.gradle/caches/modules-2/files-2.1/org.matrix.rustcomponents/sdk-android" -name '*.aar' -print -quit 2>/dev/null || true)
+          if [ -n "$aar" ]; then
+            mkdir -p /tmp/syncme-rust-aar
+            unzip -p "$aar" classes.jar > /tmp/syncme-rust-aar/classes.jar
+            jar tf /tmp/syncme-rust-aar/classes.jar | grep -Ei 'presence|sync.*listener' | head -60 || true
+            javap -classpath /tmp/syncme-rust-aar/classes.jar org.matrix.rustcomponents.sdk.Client 2>/dev/null | grep -Ei 'presence|observe|sync' | head -90 || true
+          fi
 
       - name: Generate full per-build continuation TXT
         if: always()
