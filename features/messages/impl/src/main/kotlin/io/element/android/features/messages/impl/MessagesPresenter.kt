@@ -78,6 +78,8 @@ import io.element.android.libraries.matrix.api.encryption.EncryptionService
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import io.element.android.libraries.matrix.api.MatrixClient
+import io.element.android.libraries.matrix.api.user.UserPresence
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
@@ -94,6 +96,7 @@ import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.onStart
@@ -106,6 +109,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 class MessagesPresenter(
     @Assisted private val navigator: MessagesNavigator,
     private val room: JoinedRoom,
+    private val matrixClient: MatrixClient,
     @Assisted private val composerPresenter: Presenter<MessageComposerState>,
     voiceMessageComposerPresenterFactory: DefaultVoiceMessageComposerPresenter.Factory,
     @Assisted private val timelinePresenter: Presenter<TimelineState>,
@@ -222,6 +226,24 @@ class MessagesPresenter(
 
         val membersState by room.membersStateFlow.collectAsState()
         val dmRoomMember by room.getDirectRoomMember(membersState)
+        // Read-only, on-demand status. Does not send presence events or affect login.
+        var presenceVisible by remember { mutableStateOf(false) }
+        var dmPresence by remember { mutableStateOf<UserPresence>(UserPresence.Unknown) }
+        LifecycleResumeEffect(dmRoomMember?.userId) {
+            presenceVisible = true
+            onPauseOrDispose { presenceVisible = false }
+        }
+        LaunchedEffect(dmRoomMember?.userId, presenceVisible) {
+            dmPresence = UserPresence.Unknown
+            val target = dmRoomMember?.userId
+            if (presenceVisible && target != null) {
+                while (true) {
+                    dmPresence = matrixClient.getPresence(target)
+                    delay(10_000)
+                }
+            }
+        }
+
         val roomMemberIdentityStateChanges = identityChangeState.roomMemberIdentityStateChanges
 
         // The top bar should show a "history" icon if:
@@ -345,6 +367,7 @@ class MessagesPresenter(
             pinnedMessagesBannerState = pinnedMessagesBannerState,
             dmUserVerificationState = dmUserVerificationState,
             dmUserStatus = roomInfo.dmUserStatus(),
+            dmPresence = dmPresence,
             roomMemberModerationState = roomMemberModerationState,
             topBarSharedHistoryIcon = topBarSharedHistoryIcon,
             successorRoom = roomInfo.successorRoom,
