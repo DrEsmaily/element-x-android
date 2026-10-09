@@ -115,7 +115,7 @@ class RoomListPresenter(
         // Persist dismissal per account across navigation and app restarts.
         val securityBannerPrefs = remember { appContext.getSharedPreferences("syncme_security_banner_dismissals", Context.MODE_PRIVATE) }
         val securityBannerKey = remember(client.sessionId.value) { "dismissed_" + client.sessionId.value }
-        var securityBannerDismissed by rememberSaveable(securityBannerKey) {
+        var securityBannerDismissed by remember(securityBannerKey) {
             mutableStateOf(securityBannerPrefs.getBoolean(securityBannerKey, false))
         }
         val showNewNotificationSoundBanner by remember {
