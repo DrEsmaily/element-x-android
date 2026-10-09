@@ -81,6 +81,7 @@ import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.user.UserPresence
 import io.element.android.libraries.matrix.api.user.OwnPresenceMode
+import io.element.android.libraries.sessionstorage.api.SessionStore
 import io.element.android.libraries.matrix.api.sync.SyncState
 import kotlinx.coroutines.flow.collectLatest
 import io.element.android.libraries.matrix.api.user.completeOnlineCount
@@ -121,6 +122,7 @@ class MessagesPresenter(
     @Assisted private val navigator: MessagesNavigator,
     private val room: JoinedRoom,
     private val matrixClient: MatrixClient,
+    private val sessionStore: SessionStore,
     @Assisted private val composerPresenter: Presenter<MessageComposerState>,
     voiceMessageComposerPresenterFactory: DefaultVoiceMessageComposerPresenter.Factory,
     @Assisted private val timelinePresenter: Presenter<TimelineState>,
@@ -242,18 +244,14 @@ class MessagesPresenter(
         LifecycleResumeEffect(matrixClient.sessionId) {
             localCoroutineScope.launch {
                 if (matrixClient.syncService.syncState.value == SyncState.Running &&
+                    sessionStore.getLatestSession()?.userId == matrixClient.sessionId.value &&
                     !matrixClient.isAppearingOffline()
                 ) {
                     matrixClient.setOwnPresence(OwnPresenceMode.SHOW_ACTIVITY, active = true)
                 }
             }
-            onPauseOrDispose {
-                localCoroutineScope.launch {
-                    if (!matrixClient.isAppearingOffline()) {
-                        matrixClient.setOwnPresence(OwnPresenceMode.SHOW_ACTIVITY, active = false)
-                    }
-                }
-            }
+            // No Offline request on screen change; prevents a race with the room list.
+            onPauseOrDispose { }
         }
 
         // Presence is fetched only while the conversation is visible. Background
