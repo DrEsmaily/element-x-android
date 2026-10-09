@@ -1,0 +1,60 @@
+name: Inspect actual Matrix SDK Presence API
+on:
+  push:
+    branches:
+      - syncme-presence-ffi-audit
+    paths:
+      - '.github/workflows/syncme-presence-api-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Resolve only SDK AAR
+        shell: bash
+        run: |
+          cat >/tmp/sdk-audit.init.gradle <<'EOF'
+          gradle.rootProject { root ->
+            root.tasks.register('resolvePresenceSdkAar') {
+              doLast {
+                def dep = root.dependencies.create('org.matrix.rustcomponents:sdk-android:26.10.05-nightly@aar')
+                def cfg = root.configurations.detachedConfiguration(dep)
+                cfg.transitive = false
+                cfg.resolve().each { file ->
+                  copy {
+                    from file
+                    into '/tmp'
+                    rename { 'sdk-presence-audit.aar' }
+                  }
+                  println 'AAR_PATH=' + file
+                }
+              }
+            }
+          }
+          EOF
+          ./gradlew resolvePresenceSdkAar -I /tmp/sdk-audit.init.gradle --no-configuration-cache --stacktrace
+      - name: Inspect exposed Kotlin Java signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/presence-audit
+          unzip -p /tmp/sdk-presence-audit.aar classes.jar > /tmp/presence-audit/classes.jar
+          jar tf /tmp/presence-audit/classes.jar | grep -Ei '(Presence|SyncListener|EventListener|Client.class)' > /tmp/presence-audit/classes.txt || true
+          javap -classpath /tmp/presence-audit/classes.jar org.matrix.rustcomponents.sdk.Client > /tmp/presence-audit/client.txt
+          javap -classpath /tmp/presence-audit/classes.jar org.matrix.rustcomponents.sdk.SyncService > /tmp/presence-audit/sync.txt
+          grep -Ei 'presence|listener|subscribe|syncV2|event' /tmp/presence-audit/client.txt | tee /tmp/presence-audit/callbacks.txt || true
+          grep -Ei 'presence|listener|subscribe' /tmp/presence-audit/sync.txt >> /tmp/presence-audit/callbacks.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Actual-Matrix-SDK-Presence-API
+          path: /tmp/presence-audit/*.txt
+          if-no-files-found: warn
