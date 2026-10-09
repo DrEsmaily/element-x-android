@@ -111,6 +111,26 @@ class RoomListPresenter(
     @Composable
     override fun present(): RoomListState {
         val coroutineScope = rememberCoroutineScope()
+        // Announcement runs only on visible UI after a healthy sync, without Offline
+        // commands on navigation or any changes to the Matrix startup path.
+        var onlineUiActive by remember { mutableStateOf(false) }
+        LifecycleResumeEffect(client.sessionId) {
+            onlineUiActive = true
+            onPauseOrDispose { onlineUiActive = false }
+        }
+        LaunchedEffect(client.sessionId, onlineUiActive) {
+            if (onlineUiActive) {
+                client.syncService.syncState.collectLatest { state ->
+                    if (state == io.element.android.libraries.matrix.api.sync.SyncState.Running) {
+                        while (true) {
+                            client.announceOnline()
+                            delay(30_000)
+                        }
+                    }
+                }
+            }
+        }
+
         val leaveRoomState = leaveRoomPresenter.present()
         val filtersState = filtersPresenter.present()
         val searchState = searchPresenter.present()
