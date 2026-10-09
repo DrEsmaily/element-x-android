@@ -130,6 +130,10 @@ class RoomListPresenter(
             }
         }
 
+        LaunchedEffect(listVisible, client.sessionId) {
+            if (listVisible) client.presenceUpdates.collect { }
+        }
+
         val leaveRoomState = leaveRoomPresenter.present()
         val filtersState = filtersPresenter.present()
         val searchState = searchPresenter.present()
@@ -312,9 +316,6 @@ class RoomListPresenter(
                     }
                 }.awaitAll()
             }
-        }
-        LaunchedEffect(listVisible, client.sessionId) {
-            if (listVisible) client.presenceUpdates.collect { }
         }
 
         val showEmpty by remember {
