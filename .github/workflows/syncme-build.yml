@@ -8,6 +8,7 @@ on:
       - syncme-178-from-176
       - syncme-199-presence-clean-180
       - syncme-204-presence-central
+      - syncme-presence-ffi-audit
     paths:
       - '.github/syncme-release-trigger.txt'
 
@@ -66,6 +67,28 @@ jobs:
           SYNCME_BUILD_NUMBER: ${{ github.run_number }}
         # Compress native .so files and let Android extract them on install; preserve all app features.
         run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=true -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
+
+      - name: Audit actual Matrix Rust SDK AAR Presence APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/syncme-ffi-audit
+          find "$HOME/.gradle/caches/modules-2/files-2.1/org.matrix.rustcomponents/sdk-android" -name '*.aar' -type f | sort | tee /tmp/syncme-ffi-audit/aar-paths.txt
+          aar=$(find "$HOME/.gradle/caches/modules-2/files-2.1/org.matrix.rustcomponents/sdk-android" -path '*/26.10.05-nightly/*' -name '*.aar' -type f | head -1)
+          test -n "$aar"
+          unzip -p "$aar" classes.jar > /tmp/syncme-ffi-audit/classes.jar
+          jar tf /tmp/syncme-ffi-audit/classes.jar | grep -Ei '(Presence|SyncListener|EventListener|Client.class)' | tee /tmp/syncme-ffi-audit/candidate-classes.txt || true
+          javap -classpath /tmp/syncme-ffi-audit/classes.jar org.matrix.rustcomponents.sdk.Client > /tmp/syncme-ffi-audit/client-api.txt
+          javap -classpath /tmp/syncme-ffi-audit/classes.jar org.matrix.rustcomponents.sdk.SyncService > /tmp/syncme-ffi-audit/sync-api.txt
+          grep -Ei 'presence|listener|subscribe|syncV2|event' /tmp/syncme-ffi-audit/client-api.txt | tee /tmp/syncme-ffi-audit/client-presence-methods.txt || true
+          grep -Ei 'presence|listener|subscribe|stateFlow' /tmp/syncme-ffi-audit/sync-api.txt | tee /tmp/syncme-ffi-audit/sync-presence-methods.txt || true
+      - name: Upload SDK Presence API audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SyncMe-Actual-SDK-FFI-Presence-Audit-${{ github.run_number }}
+          path: /tmp/syncme-ffi-audit/*.txt
+          if-no-files-found: warn
 
       - name: Test clean Matrix Presence rules
         run: ./gradlew :libraries:matrix:api:testDebugUnitTest --tests '*UserPresenceTest' $CI_GRADLE_ARG_PROPERTIES
