@@ -32,7 +32,7 @@ class UserPresenceTest {
         assertEquals("Online", UserPresence.Online.displayText(120_000))
         assertEquals("Away", UserPresence.Unavailable.displayText(120_000))
         assertEquals("Last seen 1 minute ago", UserPresence.Offline(60_000).displayText(120_000))
-        assertNull(UserPresence.Offline(null).displayText(120_000))
+        assertEquals("Offline", UserPresence.Offline(null).displayText(120_000))
     }
 
 }
