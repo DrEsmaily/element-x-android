@@ -231,6 +231,10 @@ class RustMatrixClient(
             var failures = 0
             while (currentCoroutineContext().isActive) {
                 if (syncService.syncState.value != SyncState.Running) {
+                    mutablePresenceStates.update { states -> states.mapValues { (_, value) ->
+                        if (value is UserPresence.Online) UserPresence.Unknown else value
+                    } }
+                    since = null
                     delay(1500)
                     continue
                 }
