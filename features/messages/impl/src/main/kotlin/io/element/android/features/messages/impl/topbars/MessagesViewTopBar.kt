@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,6 +70,7 @@ internal fun MessagesViewTopBar(
     dmUserIdentityState: IdentityState?,
     sharedHistoryIcon: SharedHistoryIcon,
     dmUserStatus: DisplayedStatus?,
+    presenceLabel: String? = null,
     onRoomDetailsClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -97,6 +99,7 @@ internal fun MessagesViewTopBar(
                     isTombstoned = isTombstoned,
                     heroes = heroes,
                     dmUserStatus = dmUserStatus,
+                    presenceLabel = presenceLabel,
                     modifier = titleModifier
                 )
 
@@ -151,6 +154,7 @@ private fun RoomAvatarAndNameRow(
     heroes: ImmutableList<AvatarData>,
     isTombstoned: Boolean,
     dmUserStatus: DisplayedStatus?,
+    presenceLabel: String?,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -164,14 +168,22 @@ private fun RoomAvatarAndNameRow(
                 isTombstoned = isTombstoned,
             ),
         )
-        DisplayNameWithStatus(
-            name = roomName ?: stringResource(CommonStrings.common_no_room_name),
-            status = dmUserStatus,
-            modifier = Modifier.padding(start = 8.dp),
-            style = ElementTheme.typography.fontBodyLgMedium,
-            nameColor = ElementTheme.colors.textPrimary,
-            nameFontStyle = FontStyle.Italic.takeIf { roomName == null },
-        )
+        Column(modifier = Modifier.padding(start = 8.dp)) {
+            DisplayNameWithStatus(
+                name = roomName ?: stringResource(CommonStrings.common_no_room_name),
+                status = dmUserStatus,
+                style = ElementTheme.typography.fontBodyLgMedium,
+                nameColor = ElementTheme.colors.textPrimary,
+                nameFontStyle = FontStyle.Italic.takeIf { roomName == null },
+            )
+            if (presenceLabel != null) {
+                Text(
+                    text = presenceLabel,
+                    style = ElementTheme.typography.fontBodySmRegular,
+                    color = ElementTheme.colors.textSecondary,
+                )
+            }
+        }
     }
 }
 
