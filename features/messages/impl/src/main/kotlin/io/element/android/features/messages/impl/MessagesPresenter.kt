@@ -235,9 +235,13 @@ class MessagesPresenter(
         }
         LaunchedEffect(matrixClient.sessionId, presenceVisible) {
             if (presenceVisible) {
-                while (true) {
-                    matrixClient.announceOnline()
-                    delay(20_000)
+                matrixClient.syncService.syncState.collectLatest { state ->
+                    if (state == io.element.android.libraries.matrix.api.sync.SyncState.Running) {
+                        while (true) {
+                            matrixClient.announceOnline()
+                            delay(20_000)
+                        }
+                    }
                 }
             }
         }
