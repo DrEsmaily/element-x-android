@@ -52,15 +52,35 @@ fun UserPresence.displayText(nowMillis: Long): String? = when (this) {
     UserPresence.Unavailable -> "Away"
     is UserPresence.Offline -> {
         val timestamp = lastSeenTimestampOrNull(nowMillis)
-        if (timestamp == null) null else {
+        if (timestamp == null) {
+            "Offline"
+        } else {
             val minutes = (nowMillis - timestamp) / 60_000
             when {
                 minutes < 1 -> "Last seen just now"
                 minutes == 1L -> "Last seen 1 minute ago"
                 minutes < 60 -> "Last seen $minutes minutes ago"
-                minutes < 120 -> "Last seen 1 hour ago"
-                minutes < 24 * 60 -> "Last seen ${minutes / 60} hours ago"
-                else -> null // Older timestamps require locale/timezone-aware date formatting in the UI.
+                else -> {
+                    val nowDay = java.util.Calendar.getInstance().apply { timeInMillis = nowMillis }
+                    val seenDay = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
+                    val today = nowDay.get(java.util.Calendar.YEAR) == seenDay.get(java.util.Calendar.YEAR) &&
+                        nowDay.get(java.util.Calendar.DAY_OF_YEAR) == seenDay.get(java.util.Calendar.DAY_OF_YEAR)
+                    val yesterdayDay = java.util.Calendar.getInstance().apply {
+                        timeInMillis = nowMillis
+                        add(java.util.Calendar.DAY_OF_YEAR, -1)
+                    }
+                    val yesterday = yesterdayDay.get(java.util.Calendar.YEAR) == seenDay.get(java.util.Calendar.YEAR) &&
+                        yesterdayDay.get(java.util.Calendar.DAY_OF_YEAR) == seenDay.get(java.util.Calendar.DAY_OF_YEAR)
+                    val time = java.text.SimpleDateFormat("HH:mm", java.util.Locale.ENGLISH)
+                        .format(java.util.Date(timestamp))
+                    when {
+                        today -> "Last seen today at $time"
+                        yesterday -> "Last seen yesterday at $time"
+                        else -> "Last seen " +
+                            java.text.SimpleDateFormat("MMM d, yyyy 'at' HH:mm", java.util.Locale.ENGLISH)
+                                .format(java.util.Date(timestamp))
+                    }
+                }
             }
         }
     }
