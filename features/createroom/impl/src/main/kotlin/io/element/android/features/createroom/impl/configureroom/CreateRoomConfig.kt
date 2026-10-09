@@ -16,6 +16,7 @@ import kotlinx.collections.immutable.persistentListOf
 data class CreateRoomConfig(
     val roomName: String? = null,
     val topic: String? = null,
+    val publishInDirectory: Boolean = true,
     val avatarUri: String? = null,
     val invites: ImmutableList<MatrixUser> = persistentListOf(),
     val visibilityState: RoomVisibilityState = RoomVisibilityState.Private(JoinRuleItem.PrivateVisibility.Private),
