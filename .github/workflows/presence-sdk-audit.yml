@@ -23,14 +23,32 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Resolve exact Rust SDK AAR
-        run: ./gradlew :libraries:matrix:impl:dependencies --configuration releaseRuntimeClasspath --no-configuration-cache
+        shell: bash
+        run: |
+          cat > /tmp/resolve-aar.init.gradle <<'GROOVY'
+          gradle.projectsEvaluated {
+            rootProject.tasks.register("fetchPinnedMatrixAar") {
+              doLast {
+                def config = rootProject.project(":libraries:matrix:impl").configurations.getByName("releaseRuntimeClasspath")
+                def artifact = config.resolvedConfiguration.resolvedArtifacts.find {
+                  it.moduleVersion.id.group == "org.matrix.rustcomponents" &&
+                  it.name == "sdk-android"
+                }
+                if (artifact == null) throw new GradleException("Pinned Matrix SDK AAR not resolved")
+                println("PINNED_AAR=" + artifact.file.absolutePath)
+                new File("/tmp/sdk-aar-path.txt").text = artifact.file.absolutePath
+              }
+            }
+          }
+          GROOVY
+          ./gradlew -I /tmp/resolve-aar.init.gradle fetchPinnedMatrixAar --no-configuration-cache
       - name: Inspect binary SDK types and Kotlin callable methods
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p /tmp/sdkinspect
           find "$HOME/.gradle/caches/modules-2/files-2.1/org.matrix.rustcomponents/sdk-android" -name '*.aar' -print
-          AAR=$(find "$HOME/.gradle/caches/modules-2/files-2.1/org.matrix.rustcomponents/sdk-android" -name '*.aar' | head -1)
+          AAR=$(cat /tmp/sdk-aar-path.txt)
           test -n "$AAR"
           unzip -p "$AAR" classes.jar > /tmp/sdkinspect/classes.jar
           jar tf /tmp/sdkinspect/classes.jar | grep -Ei 'presence|sync.*listener|client.class|event.*listener' | head -100 || true
