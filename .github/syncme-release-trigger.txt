@@ -45,3 +45,5 @@ Startup diagnostic export build 2026-10-10\n
 Diagnostic export intent corrected.
 
 Sync readiness timing markers included.
+
+Diagnostics report export corrected using cache FileProvider.
