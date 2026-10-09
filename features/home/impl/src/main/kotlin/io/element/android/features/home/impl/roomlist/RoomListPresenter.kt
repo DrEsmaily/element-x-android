@@ -312,14 +312,14 @@ class RoomListPresenter(
             .filter { it.isDm && !it.isSpace }
             .mapNotNull { it.dmUserId?.takeIf { id -> id.startsWith("@") } }
             .distinct()
-            .take(30)
+            .take(12)
         var userPresence by remember(client.sessionId.value) {
             mutableStateOf<Map<String, UserPresence>>(emptyMap())
         }
         LaunchedEffect(userIds) {
             userPresence = emptyMap()
             if (userIds.isNotEmpty()) {
-                val limiter = Semaphore(5)
+                val limiter = Semaphore(2)
                 while (true) {
                     userPresence = coroutineScope {
                         userIds.map { id ->
