@@ -40,3 +40,5 @@ SyncMe next release: remove only custom duplicate directory controls; preserve d
 SyncMe 180 event-driven presence release: 2026-10-10
 
 Event presence final release build trigger (revision 2).
+
+Startup diagnostic export build 2026-10-10\n
