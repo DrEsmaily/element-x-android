@@ -215,11 +215,14 @@ class RustMatrixClient(
 
     // Never touches login, syncing, presence publishing, or the Rust SDK transport.
     private val presenceIo = kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)
+    private val mutablePresenceStates = MutableStateFlow<Map<String, UserPresence>>(emptyMap())
+    override val presenceStates: StateFlow<Map<String, UserPresence>> = mutablePresenceStates
+
     override suspend fun getPresence(userId: UserId): UserPresence =
         kotlinx.coroutines.withContext(presenceIo) {
             if (syncService.syncState.value != SyncState.Running) return@withContext UserPresence.Unknown
             val session = sessionStore.getSession(sessionId.value) ?: return@withContext UserPresence.Unknown
-            runCatching {
+            val result = runCatching {
                 val url = homeserverUrl.trimEnd('/') +
                     "/_matrix/client/v3/presence/" +
                     URLEncoder.encode(userId.value, "UTF-8") + "/status"
@@ -245,6 +248,10 @@ class RustMatrixClient(
                     connection.disconnect()
                 }
             }.getOrDefault(UserPresence.Unknown)
+            if (result !is UserPresence.Unknown) {
+                mutablePresenceStates.value = mutablePresenceStates.value + (userId.value to result)
+            }
+            result
         }
 
     override suspend fun announceOnline() {
