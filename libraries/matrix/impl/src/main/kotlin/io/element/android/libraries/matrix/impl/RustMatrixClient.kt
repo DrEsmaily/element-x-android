@@ -127,6 +127,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -233,7 +234,9 @@ class RustMatrixClient(
                 sessionCoroutineScope.launch(presenceIo) {
                     val status = fetchPresenceSnapshot(user)
                     if (status != UserPresence.Unknown && trackedPresenceUsers.contains(user)) {
-                        mutablePresenceStates.value = mutablePresenceStates.value + (user to status)
+                        mutablePresenceStates.update { current ->
+                            if (user in current) current else current + (user to status)
+                        }
                     }
                 }
             }
@@ -314,7 +317,7 @@ class RustMatrixClient(
                     val next = presenceFromJson(event.optJSONObject("content") ?: continue)
                     if (next != UserPresence.Unknown) updates[sender] = next
                 }
-                if (updates.isNotEmpty()) mutablePresenceStates.value = mutablePresenceStates.value + updates
+                if (updates.isNotEmpty()) mutablePresenceStates.update { it + updates }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
