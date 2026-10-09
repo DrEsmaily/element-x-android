@@ -38,3 +38,5 @@ SyncMe 179: resolve Kotlin delegate and Timber imports found by release 178 comp
 SyncMe next release: remove only custom duplicate directory controls; preserve directory loading and search fixes.
 
 SyncMe 180 event-driven presence release: 2026-10-10
+
+Event presence final release build trigger (revision 2).
