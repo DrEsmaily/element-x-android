@@ -41,3 +41,4 @@ SyncMe 180 event-driven presence release: 2026-10-10
 
 Event presence final release build trigger (revision 2).
 Verified SDK setPresence and event-driven Matrix m.presence long-poll; isolated build with selected-session online announcements.
+Bound initial Presence snapshot concurrency and defer all lookups until SDK sync is Running.
