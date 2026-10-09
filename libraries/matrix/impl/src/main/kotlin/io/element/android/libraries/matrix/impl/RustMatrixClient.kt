@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.matrix.impl
 
+import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
@@ -228,6 +229,7 @@ class RustMatrixClient(
     private val presenceObserverStarted = AtomicBoolean(false)
 
     override fun trackPresence(userIds: Set<UserId>) {
+        StartupTrace.mark("presence_track_called_count_" + userIds.size)
         userIds.filter { it != sessionId }.forEach { user ->
             if (trackedPresenceUsers.add(user)) {
                 // Exactly one initial snapshot for each new user; subsequent changes are push events.
@@ -242,6 +244,7 @@ class RustMatrixClient(
             }
         }
         if (presenceObserverStarted.compareAndSet(false, true)) {
+            StartupTrace.mark("presence_observer_first_started")
             sessionCoroutineScope.launch(presenceIo) {
                 syncService.syncState.collectLatest { syncState ->
                     if (syncState == SyncState.Running) {
@@ -338,6 +341,14 @@ class RustMatrixClient(
         dispatcher = sessionDispatcher,
         sessionCoroutineScope = sessionCoroutineScope
     )
+    init {
+        sessionCoroutineScope.launch {
+            syncService.syncState.collect { state ->
+                StartupTrace.mark("matrix_sync_state_" + state.toString())
+            }
+        }
+    }
+
     override val pushersService = RustPushersService(
         client = innerClient,
         dispatchers = dispatchers,
