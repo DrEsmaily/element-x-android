@@ -232,9 +232,8 @@ class RustMatrixClient(
         withContext(sessionDispatcher) {
             runCatchingExceptions {
                 val state = when {
-                    mode == OwnPresenceMode.APPEAR_OFFLINE -> PresenceState.OFFLINE
-                    active -> PresenceState.ONLINE
-                    else -> PresenceState.UNAVAILABLE
+                    mode == OwnPresenceMode.APPEAR_OFFLINE || !active -> PresenceState.OFFLINE
+                    else -> PresenceState.ONLINE
                 }
                 innerClient.setPresence(state, true)
             }
