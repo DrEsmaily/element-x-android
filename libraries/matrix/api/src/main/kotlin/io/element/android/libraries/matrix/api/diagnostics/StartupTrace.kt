@@ -37,31 +37,40 @@ object StartupTrace {
                 val acknowledged = AtomicBoolean(false)
                 val postedAt = SystemClock.elapsedRealtime()
                 handler.post { acknowledged.set(true) }
-                Thread.sleep(1800L)
+                Thread.sleep(350L)
                 if (!acknowledged.get()) {
-                    val elapsed = SystemClock.elapsedRealtime() - postedAt
-                    mark("main_thread_unresponsive_ms_" + elapsed)
-                    Looper.getMainLooper().thread.stackTrace.take(12).forEachIndexed { index, frame ->
-                        mark("main_stack_" + index + "_" + frame.className + "." + frame.methodName + ":" + frame.lineNumber)
+                    mark("main_thread_stall_detected_ms_" + (SystemClock.elapsedRealtime() - postedAt))
+                    var samples = 0
+                    while (!acknowledged.get()) {
+                        // Always retain the full Java call chain, including the application SDK
+                        // frames BELOW Socket.connect; 12 frames were insufficient previously.
+                        if (samples < 8 || samples % 5 == 0) {
+                            val main = Looper.getMainLooper().thread
+                            mark("stall_sample_" + samples + "_state_" + main.state)
+                            main.stackTrace.take(72).forEachIndexed { index, frame ->
+                                mark("stack_" + samples + "_" + index + "_" + frame.className + "." +
+                                    frame.methodName + ":" + frame.lineNumber)
+                            }
+                        }
+                        samples++
+                        Thread.sleep(400L)
                     }
-                    // Report a single sample per prolonged freeze instead of flooding storage.
-                    while (!acknowledged.get()) Thread.sleep(250L)
-                    mark("main_thread_resumed")
+                    mark("main_thread_resumed_after_ms_" + (SystemClock.elapsedRealtime() - postedAt))
                 }
-                Thread.sleep(300L)
+                Thread.sleep(150L)
             }
         }, "syncme-startup-watchdog").apply { isDaemon = true }.start()
     }
 
     fun mark(event: String) {
         val file = target ?: return
-        val safe = event.replace(Regex("[^a-zA-Z0-9_.:-]"), "_").take(96)
+        val safe = event.replace(Regex("[^a-zA-Z0-9_.:-]"), "_").take(240)
         val elapsed = SystemClock.elapsedRealtime() - processStart
         val row = "${Instant.now()} pid=${android.os.Process.myPid()} run=$processMarker ms=$elapsed thread=${Thread.currentThread().name.take(32)} event=$safe\n"
         worker.execute {
             runCatching {
-                if (file.length() > 150_000L) {
-                    val tail = file.readText().takeLast(75_000)
+                if (file.length() > 2_000_000L) {
+                    val tail = file.readText().takeLast(1_000_000)
                     file.writeText("--- older diagnostics truncated ---\n" + tail)
                 }
                 file.appendText(row)
