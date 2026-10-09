@@ -53,3 +53,5 @@ Deep startup trace: complete stacks, window first draw and focus.
 
 Bounded diagnostics: latest 10 runs with 256KB cap each.\n
 Presence offline latency test while retaining latest-ten diagnostics.
+
+Presence: Matrix unavailable on background, online on foreground; persistent diagnostics kept.
