@@ -30,3 +30,5 @@ Build 173: automatic RTL layout for Persian/Arabic polls; hide room-members prog
 Build 174: approved white SyncMe SM notification icon for message/call alerts; publish ARM64 plus optimized universal APK without unrelated product changes.
 Build 175: ARM64 size optimization using Android legacy JNI packaging to compress native libraries, retaining all Matrix and RTC features.
 Build 176: Switch accounts header matches standard preference section, no divider above account rows; Add account max 3 sessions; optimized ARM64 release only.
+
+SyncMe 178: based on successful 176, account/banner fixes and public directory creation/admin controls.
