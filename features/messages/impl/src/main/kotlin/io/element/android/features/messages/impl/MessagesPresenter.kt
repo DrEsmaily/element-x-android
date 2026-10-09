@@ -80,6 +80,9 @@ import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.user.UserPresence
+import io.element.android.libraries.matrix.api.user.OwnPresenceMode
+import io.element.android.libraries.matrix.api.sync.SyncState
+import kotlinx.coroutines.flow.collectLatest
 import io.element.android.libraries.matrix.api.user.completeOnlineCount
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
 import io.element.android.libraries.matrix.api.room.roomMembers
@@ -234,6 +237,25 @@ class MessagesPresenter(
 
         val membersState by room.membersStateFlow.collectAsState()
         val dmRoomMember by room.getDirectRoomMember(membersState)
+        // A private-chat screen can remain visible when the home list is paused.
+        // Only send activity after a healthy Matrix sync, never while connecting.
+        LifecycleResumeEffect(matrixClient.sessionId) {
+            localCoroutineScope.launch {
+                if (matrixClient.syncService.syncState.value == SyncState.Running &&
+                    !matrixClient.isAppearingOffline()
+                ) {
+                    matrixClient.setOwnPresence(OwnPresenceMode.SHOW_ACTIVITY, active = true)
+                }
+            }
+            onPauseOrDispose {
+                localCoroutineScope.launch {
+                    if (!matrixClient.isAppearingOffline()) {
+                        matrixClient.setOwnPresence(OwnPresenceMode.SHOW_ACTIVITY, active = false)
+                    }
+                }
+            }
+        }
+
         // Presence is fetched only while the conversation is visible. Background
         // sync is not interpreted as proof that the other user is online.
         var presenceScreenActive by remember { mutableStateOf(false) }
