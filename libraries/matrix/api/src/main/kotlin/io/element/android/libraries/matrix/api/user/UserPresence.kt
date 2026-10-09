@@ -41,3 +41,27 @@ fun completeOnlineCount(memberCount: Int, reportedStates: Map<String, UserPresen
 fun UserPresence.lastSeenTimestampOrNull(nowMillis: Long): Long? =
     (this as? UserPresence.Offline)?.lastActiveAtMillis
         ?.takeIf { it in 1..nowMillis }
+
+/**
+ * Neutral, English-only display text. Callers should display nothing if the
+ * server has not supplied an authoritative presence state.
+ */
+fun UserPresence.displayText(nowMillis: Long): String? = when (this) {
+    UserPresence.Unknown -> null
+    UserPresence.Online -> "Online"
+    UserPresence.Unavailable -> "Away"
+    is UserPresence.Offline -> {
+        val timestamp = lastSeenTimestampOrNull(nowMillis)
+        if (timestamp == null) null else {
+            val minutes = (nowMillis - timestamp) / 60_000
+            when {
+                minutes < 1 -> "Last seen just now"
+                minutes == 1L -> "Last seen 1 minute ago"
+                minutes < 60 -> "Last seen $minutes minutes ago"
+                minutes < 120 -> "Last seen 1 hour ago"
+                minutes < 24 * 60 -> "Last seen ${minutes / 60} hours ago"
+                else -> null // Older timestamps require locale/timezone-aware date formatting in the UI.
+            }
+        }
+    }
+}
