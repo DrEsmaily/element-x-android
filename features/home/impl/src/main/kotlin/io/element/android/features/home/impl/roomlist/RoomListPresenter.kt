@@ -12,6 +12,10 @@ import android.content.Context
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import io.element.android.libraries.matrix.api.sync.SyncState
+import io.element.android.libraries.matrix.api.user.OwnPresenceMode
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -109,6 +113,35 @@ class RoomListPresenter(
     @Composable
     override fun present(): RoomListState {
         val coroutineScope = rememberCoroutineScope()
+        // Only advertise activity while this account's room list is visible.
+        // Never touch presence during login or before Matrix sync is running.
+        var presenceScreenActive by remember { mutableStateOf(false) }
+        LifecycleResumeEffect(client.sessionId) {
+            presenceScreenActive = true
+            onPauseOrDispose {
+                presenceScreenActive = false
+                coroutineScope.launch {
+                    if (!client.isAppearingOffline()) {
+                        client.setOwnPresence(OwnPresenceMode.SHOW_ACTIVITY, active = false)
+                    }
+                }
+            }
+        }
+        LaunchedEffect(client.sessionId, presenceScreenActive) {
+            if (presenceScreenActive) {
+                client.syncService.syncState.collectLatest { syncState ->
+                    if (syncState == SyncState.Running) {
+                        while (true) {
+                            if (!client.isAppearingOffline()) {
+                                client.setOwnPresence(OwnPresenceMode.SHOW_ACTIVITY, active = true)
+                            }
+                            delay(60_000)
+                        }
+                    }
+                }
+            }
+        }
+
         val leaveRoomState = leaveRoomPresenter.present()
         val filtersState = filtersPresenter.present()
         val searchState = searchPresenter.present()
