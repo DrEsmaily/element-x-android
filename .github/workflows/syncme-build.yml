@@ -7,6 +7,7 @@ on:
       - syncme-164-tags-pages
       - syncme-178-from-176
       - syncme-180-event-presence-20261010
+      - syncme-210-presence-stability
     paths:
       - '.github/syncme-release-trigger.txt'
 
