@@ -90,6 +90,9 @@ interface MatrixClient : ClientUrlContentFetcher {
     /** Optional server presence lookup. Never affects sync or login. */
     suspend fun getPresence(userId: UserId): UserPresence = UserPresence.Unknown
 
+    /** Best-effort online heartbeat for the selected session, only after connected sync. */
+    suspend fun announceOnline(): Unit = Unit
+
 
     /** Handles verifying this session against the user's other devices or their recovery key. */
     val sessionVerificationService: SessionVerificationService
