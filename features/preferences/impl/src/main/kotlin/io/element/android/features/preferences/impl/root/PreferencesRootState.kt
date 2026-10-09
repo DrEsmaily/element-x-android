@@ -34,6 +34,7 @@ data class PreferencesRootState(
     val showLabsItem: Boolean,
     val snackbarMessage: SnackbarMessage?,
     val eventSink: (PreferencesRootEvent) -> Unit,
+    val appearOffline: Boolean = false,
 )
 
 enum class ThemeOption : DropdownOption {
