@@ -8,6 +8,8 @@
 
 package io.element.android.features.home.impl.roomlist
 
+import android.content.Context
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -45,6 +47,7 @@ import io.element.android.features.leaveroom.api.LeaveRoomState
 import io.element.android.features.preferences.impl.tasks.MarkRoomAsRead
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.featureflag.api.FeatureFlagService
 import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.featureflag.api.ShowAllActivityInRoomListFeature
@@ -91,6 +94,7 @@ class RoomListPresenter(
     private val globalSearchPresenter: Presenter<GlobalSearchState>,
     private val featureFlagService: FeatureFlagService,
     private val appPreferencesStore: AppPreferencesStore,
+    @ApplicationContext private val appContext: Context,
 ) : Presenter<RoomListState> {
     private val encryptionService = client.encryptionService
 
@@ -108,7 +112,12 @@ class RoomListPresenter(
             roomListDataSource.launchIn(this)
         }
 
-        var securityBannerDismissed by rememberSaveable { mutableStateOf(false) }
+        // Persist dismissal per account across navigation and app restarts.
+        val securityBannerPrefs = remember { appContext.getSharedPreferences("syncme_security_banner_dismissals", Context.MODE_PRIVATE) }
+        val securityBannerKey = remember(client.sessionId.value) { "dismissed_" + client.sessionId.value }
+        var securityBannerDismissed by rememberSaveable(securityBannerKey) {
+            mutableStateOf(securityBannerPrefs.getBoolean(securityBannerKey, false))
+        }
         val showNewNotificationSoundBanner by remember {
             announcementService.announcementsToShowFlow().map { announcements ->
                 announcements.contains(Announcement.NewNotificationSound)
@@ -130,8 +139,11 @@ class RoomListPresenter(
                 is RoomListEvent.UpdateVisibleRange -> coroutineScope.launch {
                     roomListDataSource.updateVisibleRange(event.range)
                 }
-                RoomListEvent.DismissRequestVerificationPrompt -> securityBannerDismissed = true
-                RoomListEvent.DismissBanner -> securityBannerDismissed = true
+                RoomListEvent.DismissRequestVerificationPrompt,
+                RoomListEvent.DismissBanner -> {
+                    securityBannerDismissed = true
+                    securityBannerPrefs.edit().putBoolean(securityBannerKey, true).apply()
+                }
                 RoomListEvent.DismissNewNotificationSoundBanner -> coroutineScope.launch {
                     announcementService.onAnnouncementDismissed(Announcement.NewNotificationSound)
                 }
