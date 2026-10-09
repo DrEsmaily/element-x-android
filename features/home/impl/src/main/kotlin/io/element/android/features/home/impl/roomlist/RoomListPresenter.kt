@@ -12,6 +12,7 @@ import android.content.Context
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -54,6 +55,14 @@ import io.element.android.libraries.featureflag.api.ShowAllActivityInRoomListFea
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.user.UserPresence
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
@@ -67,6 +76,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
@@ -101,6 +111,25 @@ class RoomListPresenter(
     @Composable
     override fun present(): RoomListState {
         val coroutineScope = rememberCoroutineScope()
+        // Heartbeat only for the foreground account, never in the login/sync pipeline.
+        var listVisible by remember { mutableStateOf(false) }
+        LifecycleResumeEffect(client.sessionId) {
+            listVisible = true
+            onPauseOrDispose { listVisible = false }
+        }
+        LaunchedEffect(client.sessionId, listVisible) {
+            if (listVisible) {
+                client.syncService.syncState.collectLatest { state ->
+                    if (state == io.element.android.libraries.matrix.api.sync.SyncState.Running) {
+                        while (true) {
+                            client.announceOnline()
+                            delay(20_000)
+                        }
+                    }
+                }
+            }
+        }
+
         val leaveRoomState = leaveRoomPresenter.present()
         val filtersState = filtersPresenter.present()
         val searchState = searchPresenter.present()
@@ -265,6 +294,12 @@ class RoomListPresenter(
             roomListDataSource.roomSummariesFlow.collect { value = AsyncData.Success(it) }
         }
         val loadingState by roomListDataSource.loadingState.collectAsState()
+        // A single session-scoped event stream supplies all DM presence states.
+        val presenceIds = roomSummaries.dataOrNull().orEmpty().filter { it.isDm }
+            .mapNotNull { it.dmUserId }.map(::UserId).toSet()
+        LaunchedEffect(presenceIds) { client.trackPresence(presenceIds) }
+        val presenceStates by client.presenceStates.collectAsState()
+
         val showEmpty by remember {
             derivedStateOf {
                 (loadingState as? RoomList.LoadingState.Loaded)?.numberOfRooms == 0
@@ -291,7 +326,9 @@ class RoomListPresenter(
                     showUnreadCount = showUnreadCount,
                     fullScreenIntentPermissionsState = fullScreenIntentPermissionsPresenter.present(),
                     batteryOptimizationState = batteryOptimizationPresenter.present(),
-                    summaries = roomSummaries.dataOrNull().orEmpty().toImmutableList(),
+                    summaries = roomSummaries.dataOrNull().orEmpty().map { summary ->
+                        summary.copy(isOnline = presenceStates[summary.dmUserId?.let(::UserId)] is UserPresence.Online)
+                    }.toImmutableList(),
                     showAllActivity = showAllActivity,
                     seenRoomInvites = seenRoomInvites.toImmutableSet(),
                 )
