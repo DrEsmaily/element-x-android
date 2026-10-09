@@ -27,9 +27,9 @@ jobs:
         run: |
           cat > /tmp/resolve-aar.init.gradle <<'GROOVY'
           gradle.beforeProject { p ->
-            if (p.path == ":") p.tasks.register("fetchPinnedMatrixAar") {
+            if (p.path == ":libraries:matrix:impl") p.tasks.register("fetchPinnedMatrixAar") {
               doLast {
-                def config = rootProject.project(":libraries:matrix:impl").configurations.getByName("releaseRuntimeClasspath")
+                def config = p.configurations.getByName("releaseRuntimeClasspath")
                 def artifact = config.resolvedConfiguration.resolvedArtifacts.find {
                   it.moduleVersion.id.group == "org.matrix.rustcomponents" &&
                   it.name == "sdk-android"
@@ -41,7 +41,7 @@ jobs:
             }
           }
           GROOVY
-          ./gradlew -I /tmp/resolve-aar.init.gradle fetchPinnedMatrixAar --no-configuration-cache
+          ./gradlew -I /tmp/resolve-aar.init.gradle :libraries:matrix:impl:fetchPinnedMatrixAar --no-configuration-cache
       - name: Inspect binary SDK types and Kotlin callable methods
         shell: bash
         run: |
