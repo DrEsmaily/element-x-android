@@ -8,7 +8,6 @@
 
 package io.element.android.features.createroom.impl.configureroom
 
-import androidx.compose.material3.Switch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -133,19 +132,6 @@ fun ConfigureRoomView(
                     state.eventSink(ConfigureRoomEvent.JoinRuleChanged(it))
                 },
             )
-            if (state.config.visibilityState is RoomVisibilityState.Public) {
-                ListItem(
-                    content = { Text("Show in Room Directory") },
-                    supportingContent = { Text("Allow others to discover this public room") },
-                    trailingContent = ListItemContent.Custom {
-                        Switch(
-                            checked = state.config.publishInDirectory,
-                            onCheckedChange = { state.eventSink(ConfigureRoomEvent.PublishInDirectoryChanged(it)) },
-                        )
-                    },
-                    onClick = { state.eventSink(ConfigureRoomEvent.PublishInDirectoryChanged(!state.config.publishInDirectory)) },
-                )
-            }
             if (state.config.visibilityState !is RoomVisibilityState.Private) {
                 ListSectionHeader(title = stringResource(R.string.screen_create_room_room_address_section_title))
                 RoomAddressField(
