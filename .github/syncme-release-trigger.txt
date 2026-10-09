@@ -42,3 +42,4 @@ Fix delayed presence: immediate heartbeat on SyncState.Running, no page navigati
 Fix failed PresenceTest Kotlin test imports using project JUnit; rerun APK and unit tests.
 Retry full APK build and JUnit presence tests after fixing test imports.
 Central per-session Presence StateFlow shared by DM headers and home list; independent build.
+Final central Presence Flow build includes atomic concurrent state updates.
