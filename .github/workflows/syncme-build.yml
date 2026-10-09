@@ -6,6 +6,7 @@ on:
     branches:
       - syncme-164-tags-pages
       - syncme-178-from-176
+      - syncme-180-event-presence-20261010
     paths:
       - '.github/syncme-release-trigger.txt'
 
