@@ -27,4 +27,12 @@ class UserPresenceTest {
         assertNull(UserPresence.Online.lastSeenTimestampOrNull(100))
         assertEquals(80L, UserPresence.Offline(80).lastSeenTimestampOrNull(100))
     }
+    @Test fun presenceLabelsAreOnlyShownForVerifiedStates() {
+        assertNull(UserPresence.Unknown.displayText(120_000))
+        assertEquals("Online", UserPresence.Online.displayText(120_000))
+        assertEquals("Away", UserPresence.Unavailable.displayText(120_000))
+        assertEquals("Last seen 1 minute ago", UserPresence.Offline(60_000).displayText(120_000))
+        assertNull(UserPresence.Offline(null).displayText(120_000))
+    }
+
 }
