@@ -12,6 +12,7 @@ on:
       - syncme-221-diagnostics-text-view
       - syncme-222-deep-startup-network-trace
       - syncme-225-last-ten-startup-logs
+      - syncme-226-presence-offline-fast
     paths:
       - '.github/syncme-release-trigger.txt'
 
