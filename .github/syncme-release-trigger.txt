@@ -40,3 +40,4 @@ SyncMe next release: remove only custom duplicate directory controls; preserve d
 SyncMe 181 isolated CI verification from confirmed Build 180; presence foundation compilation only, not feature-complete.
 
 SyncMe 181 explicit GitHub Actions push-trigger retry after connector permissions confirmation, 2026-10-09.
+SyncMe 181 validate presence formatting helpers and unit-test compilation at commit 9375669.
