@@ -145,7 +145,6 @@ import org.matrix.rustcomponents.sdk.UserProfile
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import io.element.android.libraries.matrix.api.user.UserPresence
-import io.element.android.libraries.matrix.api.user.OwnPresenceMode
 import org.matrix.rustcomponents.sdk.PresenceState
 import org.json.JSONObject
 import java.net.HttpURLConnection
