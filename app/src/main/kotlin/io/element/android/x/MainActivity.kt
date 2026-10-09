@@ -9,6 +9,11 @@
 package io.element.android.x
 
 import android.content.Intent
+import android.view.FrameMetrics
+import android.view.ViewTreeObserver
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.SystemClock
 import androidx.core.content.FileProvider
 import android.content.ClipData
 import android.widget.Toast
@@ -57,6 +62,10 @@ private val loggerTag = LoggerTag("MainActivity")
 class MainActivity : NodeActivity() {
     private lateinit var mainNode: MainNode
     private lateinit var appBindings: AppBindings
+    private var firstDrawRecorded = false
+    private var frameThread: HandlerThread? = null
+    private var frameListener: android.view.Window.OnFrameMetricsAvailableListener? = null
+    private var lastSlowFrameLog = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         StartupTrace.mark("activity_onCreate_start")
@@ -64,6 +73,8 @@ class MainActivity : NodeActivity() {
         installSplashScreen()
         StartupTrace.mark("splash_installed")
         super.onCreate(savedInstanceState)
+        StartupTrace.mark("activity_super_onCreate_done")
+        installFrameDiagnostics()
         appBindings = bindings()
         setupLockManagement(appBindings.lockScreenService(), appBindings.lockScreenEntryPoint())
         enableEdgeToEdge()
@@ -72,6 +83,15 @@ class MainActivity : NodeActivity() {
             MainContent(appBindings)
         }
         StartupTrace.mark("setContent_return")
+        window.decorView.viewTreeObserver.addOnDrawListener(object : ViewTreeObserver.OnDrawListener {
+            override fun onDraw() {
+                if (!firstDrawRecorded) {
+                    firstDrawRecorded = true
+                    StartupTrace.mark("window_first_draw")
+                    window.decorView.post { window.decorView.viewTreeObserver.removeOnDrawListener(this) }
+                }
+            }
+        })
         if (intent?.action == "io.syncme.EXPORT_STARTUP_TRACE") exportStartupTrace()
 
         val activity = this
@@ -229,6 +249,29 @@ class MainActivity : NodeActivity() {
         }
     }
 
+    private fun installFrameDiagnostics() {
+        if (android.os.Build.VERSION.SDK_INT < 24) return
+        frameThread = HandlerThread("syncme-frame-metrics").also { it.start() }
+        val listener = android.view.Window.OnFrameMetricsAvailableListener { _, metrics, dropped ->
+            val totalMs = metrics.getMetric(FrameMetrics.TOTAL_DURATION) / 1_000_000L
+            val now = SystemClock.elapsedRealtime()
+            if (totalMs >= 75 && now - lastSlowFrameLog > 400L) {
+                lastSlowFrameLog = now
+                StartupTrace.mark("slow_frame_total_ms_" + totalMs +
+                    "_layout_ms_" + metrics.getMetric(FrameMetrics.LAYOUT_MEASURE_DURATION) / 1_000_000L +
+                    "_draw_ms_" + metrics.getMetric(FrameMetrics.DRAW_DURATION) / 1_000_000L +
+                    "_dropped_" + dropped)
+            }
+        }
+        frameListener = listener
+        window.addOnFrameMetricsAvailableListener(listener, Handler(frameThread!!.looper))
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        StartupTrace.mark(if (hasFocus) "window_focus_gained" else "window_focus_lost")
+    }
+
     override fun onPause() {
         super.onPause()
         Timber.tag(loggerTag.value).d("onPause")
@@ -237,10 +280,14 @@ class MainActivity : NodeActivity() {
     override fun onResume() {
         super.onResume()
         StartupTrace.mark("activity_onResume")
+        StartupTrace.mark("window_flags_" + window.attributes.flags)
         Timber.tag(loggerTag.value).d("onResume")
     }
 
     override fun onDestroy() {
+        StartupTrace.mark("activity_onDestroy")
+        frameListener?.let { window.removeOnFrameMetricsAvailableListener(it) }
+        frameThread?.quitSafely()
         super.onDestroy()
         Timber.tag(loggerTag.value).d("onDestroy")
     }
