@@ -16,6 +16,7 @@ sealed interface RoomDetailsEvent {
     data class CopyToClipboard(val text: String) : RoomDetailsEvent
     data object CopyRoomId : RoomDetailsEvent
     data class SetFavorite(val isFavorite: Boolean) : RoomDetailsEvent
+    data class SetDirectoryPublished(val published: Boolean) : RoomDetailsEvent
     data object MarkAsRead : RoomDetailsEvent
     data object MarkAsUnread : RoomDetailsEvent
 }
