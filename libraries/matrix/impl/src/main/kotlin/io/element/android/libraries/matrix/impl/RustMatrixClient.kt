@@ -239,6 +239,9 @@ class RustMatrixClient(
     override val roomMembershipObserver = RoomMembershipObserver()
 
     override suspend fun getPresence(userId: UserId): UserPresence = withContext(sessionDispatcher) {
+        if (syncService.syncState.value != io.element.android.libraries.matrix.api.sync.SyncState.Running) {
+            return@withContext UserPresence.Unknown
+        }
         // Only query when asked by visible UI. Never log access tokens or guess status.
         runCatching {
             val url = homeserverUrl.trimEnd('/') +
@@ -278,6 +281,9 @@ class RustMatrixClient(
     }
 
     override suspend fun setOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> {
+        if (syncService.syncState.value != io.element.android.libraries.matrix.api.sync.SyncState.Running) {
+            return Result.failure(IllegalStateException("Wait until Matrix sync is connected"))
+        }
         val result = sendOwnPresence(mode, active)
         if (result.isSuccess) {
             ownPresenceMode = mode
