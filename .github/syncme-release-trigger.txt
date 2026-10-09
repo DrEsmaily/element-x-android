@@ -28,3 +28,4 @@ Build 172: tag auto-scroll, short local username search, SyncMe by 0x07c4 footer
 Build 173: automatic RTL layout for Persian/Arabic polls; hide room-members progress indicator when cached members are already displayed.
 
 Build 174: approved white SyncMe SM notification icon for message/call alerts; publish ARM64 plus optimized universal APK without unrelated product changes.
+Build 175: ARM64 size optimization using Android legacy JNI packaging to compress native libraries, retaining all Matrix and RTC features.
