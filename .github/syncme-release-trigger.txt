@@ -45,3 +45,4 @@ Central per-session Presence StateFlow shared by DM headers and home list; indep
 Final central Presence Flow build includes atomic concurrent state updates.
 Build Presence event-stream candidate: filtered independent m.presence sync, central StateFlow, no per-user polling.
 Harden m.presence stream: disallow redirects and invalidate stale green on Matrix disconnect.
+Fix room-list presenter scope for shared event subscription, retry full build.
