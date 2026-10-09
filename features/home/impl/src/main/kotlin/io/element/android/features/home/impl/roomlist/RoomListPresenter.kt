@@ -54,6 +54,8 @@ import io.element.android.libraries.featureflag.api.ShowAllActivityInRoomListFea
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
+import kotlinx.coroutines.delay
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
@@ -264,6 +266,18 @@ class RoomListPresenter(
         val roomSummaries by produceState(initialValue = AsyncData.Loading()) {
             roomListDataSource.roomSummariesFlow.collect { value = AsyncData.Success(it) }
         }
+        val onlineTargets = roomSummaries.dataOrNull().orEmpty()
+            .filter { it.isDm && !it.isSpace }
+            .mapNotNull { it.heroes.firstOrNull()?.id?.takeIf { id -> id.startsWith("@") } }
+            .distinct().take(20)
+        var onlineIds by remember(client.sessionId) { mutableStateOf<Set<String>>(emptySet()) }
+        LaunchedEffect(onlineTargets) {
+            onlineIds = emptySet()
+            while (onlineTargets.isNotEmpty()) {
+                onlineIds = onlineTargets.filter { client.isUserOnline(UserId(it)) }.toSet()
+                delay(60_000)
+            }
+        }
         val loadingState by roomListDataSource.loadingState.collectAsState()
         val showEmpty by remember {
             derivedStateOf {
@@ -291,7 +305,9 @@ class RoomListPresenter(
                     showUnreadCount = showUnreadCount,
                     fullScreenIntentPermissionsState = fullScreenIntentPermissionsPresenter.present(),
                     batteryOptimizationState = batteryOptimizationPresenter.present(),
-                    summaries = roomSummaries.dataOrNull().orEmpty().toImmutableList(),
+                    summaries = roomSummaries.dataOrNull().orEmpty().map { room ->
+                        room.copy(syncmeOnline = room.isDm && room.heroes.firstOrNull()?.id in onlineIds)
+                    }.toImmutableList(),
                     showAllActivity = showAllActivity,
                     seenRoomInvites = seenRoomInvites.toImmutableSet(),
                 )
