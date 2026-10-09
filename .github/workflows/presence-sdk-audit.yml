@@ -1,0 +1,42 @@
+name: Inspect Matrix SDK Presence API
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - syncme-presence-sdk-ffi-audit
+    paths:
+      - '.github/workflows/presence-sdk-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Resolve exact Rust SDK AAR
+        run: ./gradlew :libraries:matrix:impl:dependencies --configuration releaseRuntimeClasspath --no-configuration-cache
+      - name: Inspect binary SDK types and Kotlin callable methods
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/sdkinspect
+          find "$HOME/.gradle/caches/modules-2/files-2.1/org.matrix.rustcomponents/sdk-android" -name '*.aar' -print
+          AAR=$(find "$HOME/.gradle/caches/modules-2/files-2.1/org.matrix.rustcomponents/sdk-android" -name '*.aar' | head -1)
+          test -n "$AAR"
+          unzip -p "$AAR" classes.jar > /tmp/sdkinspect/classes.jar
+          jar tf /tmp/sdkinspect/classes.jar | grep -Ei 'presence|sync.*listener|client.class|event.*listener' | head -100 || true
+          echo '=== Client public API ==='
+          javap -classpath /tmp/sdkinspect/classes.jar org.matrix.rustcomponents.sdk.Client | grep -iE 'presence|sync|listener|event' | head -120 || true
+          echo '=== all presence-related method strings in class listings ==='
+          for cls in $(jar tf /tmp/sdkinspect/classes.jar | grep -Ei '^org/matrix/rustcomponents/sdk/.*(Presence|SyncListener|EventHandler).*class$' | head -50 | sed 's|/|.|g;s|.class$||'); do
+            javap -classpath /tmp/sdkinspect/classes.jar "$cls" 2>/dev/null | grep -iE 'presence|event|update|listener' | head -12 || true
+          done
