@@ -233,7 +233,7 @@ class MainActivity : NodeActivity() {
             val report = withContext(Dispatchers.IO) {
                 kotlinx.coroutines.delay(180)
                 runCatching {
-                    File(filesDir, "syncme-startup-trace.txt").takeIf { it.isFile }?.readText()
+                    File(filesDir, "syncme-startup-trace.txt").takeIf { it.isFile }?.readText()?.takeLast(180_000)
                         ?: "No startup diagnostics have been recorded yet."
                 }.getOrElse { "Unable to read diagnostics: " + it.javaClass.simpleName }
             }
