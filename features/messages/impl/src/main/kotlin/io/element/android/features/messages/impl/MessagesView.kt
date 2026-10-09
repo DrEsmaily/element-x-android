@@ -252,7 +252,14 @@ fun MessagesView(
                             dmUserIdentityState = state.dmUserVerificationState,
                             sharedHistoryIcon = state.topBarSharedHistoryIcon,
                             dmUserStatus = state.dmUserStatus,
-                            presenceLabel = state.dmPresence.displayText(System.currentTimeMillis()),
+                            presenceLabel = if (state.groupMemberCount != null) {
+                                val count = state.groupMemberCount
+                                val countText = if (count == 1L) "1 member" else "$count members"
+                                val online = state.groupOnlineCount
+                                if (online != null && online > 0) "$countText, $online online" else countText
+                            } else {
+                                state.dmPresence.displayText(System.currentTimeMillis())
+                            },
                             onBackClick = { hidingKeyboard { onBackClick() } },
                             onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
                             menuActions = {
