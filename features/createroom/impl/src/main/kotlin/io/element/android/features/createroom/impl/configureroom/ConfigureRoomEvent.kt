@@ -14,6 +14,7 @@ import io.element.android.libraries.matrix.ui.media.AvatarAction
 sealed interface ConfigureRoomEvent {
     data class RoomNameChanged(val name: String) : ConfigureRoomEvent
     data class TopicChanged(val topic: String) : ConfigureRoomEvent
+    data class PublishInDirectoryChanged(val enabled: Boolean) : ConfigureRoomEvent
     data class JoinRuleChanged(val joinRuleItem: JoinRuleItem) : ConfigureRoomEvent
     data class RoomAddressChanged(val roomAddress: String) : ConfigureRoomEvent
     data object CreateRoom : ConfigureRoomEvent
