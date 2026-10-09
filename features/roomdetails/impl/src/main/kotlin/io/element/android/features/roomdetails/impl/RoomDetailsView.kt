@@ -319,14 +319,6 @@ fun RoomDetailsView(
                         openRoomNotificationSettings = openRoomNotificationSettings
                     )
                 }
-                if (state.canManageDirectory) {
-                    PreferenceSwitch(
-                        icon = CompoundIcons.Public(),
-                        title = "Show in Room Directory",
-                        isChecked = state.directoryPublished,
-                        onCheckedChange = { state.eventSink(RoomDetailsEvent.SetDirectoryPublished(it)) },
-                    )
-                }
                 FavoriteItem(
                     isFavorite = state.isFavorite,
                     onFavoriteChanges = {
