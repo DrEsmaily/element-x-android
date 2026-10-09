@@ -128,6 +128,8 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -227,6 +229,7 @@ class RustMatrixClient(
     override val presenceStates: StateFlow<Map<UserId, UserPresence>> = mutablePresenceStates
     private val presenceIo = dispatchers.io.limitedParallelism(4)
     private val presenceObserverStarted = AtomicBoolean(false)
+    private val presenceSnapshotLimiter = Semaphore(3)
 
     override suspend fun announceOnline() {
         // Never report activity for an inactive account or while login/sync is starting.
@@ -242,7 +245,8 @@ class RustMatrixClient(
             if (trackedPresenceUsers.add(user)) {
                 // Exactly one initial snapshot for each new user; subsequent changes are push events.
                 sessionCoroutineScope.launch(presenceIo) {
-                    val status = fetchPresenceSnapshot(user)
+                    syncService.syncState.first { it == SyncState.Running }
+                    val status = presenceSnapshotLimiter.withPermit { fetchPresenceSnapshot(user) }
                     if (status != UserPresence.Unknown && trackedPresenceUsers.contains(user)) {
                         mutablePresenceStates.update { current ->
                             if (user in current) current else current + (user to status)
