@@ -80,6 +80,14 @@ import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.user.UserPresence
+import io.element.android.libraries.matrix.api.user.completeOnlineCount
+import io.element.android.libraries.matrix.api.room.RoomMembershipState
+import io.element.android.libraries.matrix.api.room.roomMembers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import io.element.android.libraries.matrix.api.room.RoomInfo
 import io.element.android.libraries.matrix.api.room.RoomMembersState
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
@@ -245,6 +253,32 @@ class MessagesPresenter(
             }
         }
 
+        var groupOnlineCount by remember(room.roomId) { mutableStateOf<Int?>(null) }
+        LaunchedEffect(roomInfo.isDm, roomInfo.activeMembersCount, membersState, presenceScreenActive) {
+            groupOnlineCount = null
+            if (!roomInfo.isDm && presenceScreenActive) {
+                val joined = membersState.roomMembers().orEmpty().filter {
+                    it.membership == RoomMembershipState.JOIN
+                }
+                // Avoid background polling, large-group request storms and partial estimates.
+                if (joined.size in 1..30 && joined.size.toLong() == roomInfo.activeMembersCount) {
+                    val limiter = Semaphore(5)
+                    while (true) {
+                        val states = coroutineScope {
+                            joined.map { member ->
+                                async {
+                                    member.userId.value to limiter.withPermit {
+                                        matrixClient.getPresence(member.userId)
+                                    }
+                                }
+                            }.awaitAll().toMap()
+                        }
+                        groupOnlineCount = completeOnlineCount(joined.size, states)
+                        delay(60_000)
+                    }
+                }
+            }
+        }
         val roomMemberIdentityStateChanges = identityChangeState.roomMemberIdentityStateChanges
 
         // The top bar should show a "history" icon if:
@@ -369,6 +403,8 @@ class MessagesPresenter(
             dmUserVerificationState = dmUserVerificationState,
             dmUserStatus = roomInfo.dmUserStatus(),
             dmPresence = dmPresence,
+            groupMemberCount = roomInfo.activeMembersCount.takeUnless { roomInfo.isDm },
+            groupOnlineCount = groupOnlineCount,
             roomMemberModerationState = roomMemberModerationState,
             topBarSharedHistoryIcon = topBarSharedHistoryIcon,
             successorRoom = roomInfo.successorRoom,
