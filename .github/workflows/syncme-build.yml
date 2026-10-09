@@ -11,6 +11,7 @@ on:
       - syncme-220-diagnostics-export-fix
       - syncme-221-diagnostics-text-view
       - syncme-222-deep-startup-network-trace
+      - syncme-225-last-ten-startup-logs
     paths:
       - '.github/syncme-release-trigger.txt'
 
