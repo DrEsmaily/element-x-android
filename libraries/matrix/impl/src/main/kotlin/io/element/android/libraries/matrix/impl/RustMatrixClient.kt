@@ -111,6 +111,8 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
@@ -128,6 +130,8 @@ import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -225,6 +229,8 @@ class RustMatrixClient(
     private val mutablePresenceStates = MutableStateFlow<Map<UserId, UserPresence>>(emptyMap())
     override val presenceStates: StateFlow<Map<UserId, UserPresence>> = mutablePresenceStates
     private val presenceIo = dispatchers.io.limitedParallelism(4)
+    // Limit actual concurrent HTTP connections, not merely coroutine dispatches.
+    private val presenceSnapshotSlots = Semaphore(2)
     private val presenceObserverStarted = AtomicBoolean(false)
 
     override fun trackPresence(userIds: Set<UserId>) {
@@ -232,7 +238,7 @@ class RustMatrixClient(
             if (trackedPresenceUsers.add(user)) {
                 // Exactly one initial snapshot for each new user; subsequent changes are push events.
                 sessionCoroutineScope.launch(presenceIo) {
-                    val status = fetchPresenceSnapshot(user)
+                    val status = presenceSnapshotSlots.withPermit { fetchPresenceSnapshot(user) }
                     if (status != UserPresence.Unknown && trackedPresenceUsers.contains(user)) {
                         mutablePresenceStates.update { current ->
                             if (user in current) current else current + (user to status)
@@ -263,6 +269,7 @@ class RustMatrixClient(
                     URLEncoder.encode(user.value, "UTF-8") + "/status"
                 val connection = URL(url).openConnection() as HttpURLConnection
                 try {
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     connection.connectTimeout = 4000
                     connection.readTimeout = 4000
                     connection.setRequestProperty("Authorization", "Bearer " + session.accessToken)
@@ -288,14 +295,15 @@ class RustMatrixClient(
     private suspend fun collectPresenceEvents() = withContext(presenceIo) {
         var since: String? = null
         var failures = 0
-        // Presence-only long polling, with no polling interval and no room timeline downloads.
+        // Presence-only long polling. Do not let this secondary observer advertise ONLINE.
+        // The main Matrix SDK retains responsibility for the account's foreground presence.
         val filter = URLEncoder.encode(
             """{"room":{"rooms":[],"timeline":{"limit":0}},"presence":{"types":["m.presence"]}}""",
             "UTF-8"
         )
         while (kotlin.coroutines.coroutineContext.isActive) {
             val session = sessionStore.getSession(sessionId.value) ?: break
-            val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=30000" +
+            val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=30000&set_presence=offline" +
                 "&filter=" + filter + (since?.let { "&since=" + URLEncoder.encode(it, "UTF-8") } ?: "")
             var connection: HttpURLConnection? = null
             try {
