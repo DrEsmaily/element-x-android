@@ -92,6 +92,8 @@ interface MatrixClient : ClientUrlContentFetcher {
     suspend fun getPresence(userId: UserId): UserPresence = UserPresence.Unknown
 
     /** Client-side opt-out; does not implement per-contact privacy controls. */
+    suspend fun isAppearingOffline(): Boolean = false
+
     suspend fun setOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> =
         Result.failure(UnsupportedOperationException("Presence reporting is unavailable"))
 
