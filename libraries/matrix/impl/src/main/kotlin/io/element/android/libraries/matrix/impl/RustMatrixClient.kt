@@ -144,6 +144,13 @@ import org.matrix.rustcomponents.sdk.TaskHandle
 import org.matrix.rustcomponents.sdk.UserProfile
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
+import io.element.android.libraries.matrix.api.user.UserPresence
+import io.element.android.libraries.matrix.api.user.OwnPresenceMode
+import org.matrix.rustcomponents.sdk.PresenceState
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import java.io.File
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicBoolean
@@ -196,8 +203,29 @@ class RustMatrixClient(
     override val homeserverUrl: String = innerClient.homeserver()
     override val sessionCoroutineScope = appCoroutineScope.childScope(dispatchers.main, "Session-$sessionId")
     private val sessionDispatcher = dispatchers.io.limitedParallelism(64)
+    private val ownPresenceFile = File(sessionPaths.fileDirectory, "syncme-presence-mode")
+    @Volatile private var ownPresenceMode = runCatching {
+        if (ownPresenceFile.readText().trim() == "offline") OwnPresenceMode.APPEAR_OFFLINE
+        else OwnPresenceMode.SHOW_ACTIVITY
+    }.getOrDefault(OwnPresenceMode.SHOW_ACTIVITY)
+
+    private suspend fun sendOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> =
+        withContext(sessionDispatcher) {
+            runCatchingExceptions {
+                val state = when {
+                    mode == OwnPresenceMode.APPEAR_OFFLINE || !active -> PresenceState.OFFLINE
+                    else -> PresenceState.ONLINE
+                }
+                innerClient.setPresence(state, true)
+            }
+        }
+    
+    override suspend fun isAppearingOffline(): Boolean = ownPresenceMode == OwnPresenceMode.APPEAR_OFFLINE
+
 
     init {
+        // Presence is NEVER changed during login or client initialization.
+        // Startup must remain independent from the optional presence feature.
         // Matrix Rust SDK disables intermediate send-queue media upload progress by default.
         // SyncMe needs the actual in-flight values so the UI can render 0..100% in real time.
         innerClient.enableSendQueueUploadProgress(true)
@@ -209,6 +237,57 @@ class RustMatrixClient(
     private val innerSpaceService = runBlocking { innerClient.spaceService() }
 
     override val roomMembershipObserver = RoomMembershipObserver()
+
+    override suspend fun getPresence(userId: UserId): UserPresence = withContext(sessionDispatcher) {
+        // Only query when asked by visible UI. Never log access tokens or guess status.
+        runCatching {
+            val url = homeserverUrl.trimEnd('/') +
+                "/_matrix/client/v3/presence/" +
+                URLEncoder.encode(userId.value, "UTF-8") + "/status"
+            val connection = URL(url).openConnection() as HttpURLConnection
+            try {
+                connection.instanceFollowRedirects = false
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 4_000
+                connection.readTimeout = 4_000
+                connection.setRequestProperty("Authorization", "Bearer " + innerClient.session().accessToken)
+                connection.setRequestProperty("Accept", "application/json")
+                if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                    UserPresence.Unknown
+                } else {
+                    val raw = connection.inputStream.bufferedReader().use { it.readText() }
+                    val response = JSONObject(raw)
+                    when (response.optString("presence")) {
+                        "online" -> UserPresence.Online
+                        "unavailable" -> UserPresence.Unavailable
+                        "offline" -> {
+                            val elapsed = if (response.has("last_active_ago") && !response.isNull("last_active_ago")) {
+                                response.optLong("last_active_ago", -1L).takeIf { it >= 0 }
+                            } else null
+                            val timestamp = elapsed?.let { System.currentTimeMillis() - it }
+                                ?.takeIf { it > 0 }
+                            UserPresence.Offline(timestamp)
+                        }
+                        else -> UserPresence.Unknown
+                    }
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }.getOrDefault(UserPresence.Unknown)
+    }
+
+    override suspend fun setOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> {
+        val result = sendOwnPresence(mode, active)
+        if (result.isSuccess) {
+            ownPresenceMode = mode
+            runCatching {
+                ownPresenceFile.parentFile?.mkdirs()
+                ownPresenceFile.writeText(if (mode == OwnPresenceMode.APPEAR_OFFLINE) "offline" else "show")
+            }
+        }
+        return result
+    }
 
     override val syncService = RustSyncService(
         inner = innerSyncService,
@@ -712,6 +791,8 @@ class RustMatrixClient(
     }
 
     internal suspend fun destroy() {
+        withContext(kotlinx.coroutines.Dispatchers.Main.immediate) {
+            }
         innerNotificationClient.close()
 
         roomFactory.destroy()
