@@ -67,6 +67,8 @@ data class MessagesState(
     val redactEventAction: AsyncAction<Unit>,
     val eventSink: (MessagesEvent) -> Unit,
     val dmPresence: UserPresence = UserPresence.Unknown,
+    val groupMemberCount: Long? = null,
+    val groupOnlineCount: Int? = null,
 ) {
     val isTombstoned = successorRoom != null
 
