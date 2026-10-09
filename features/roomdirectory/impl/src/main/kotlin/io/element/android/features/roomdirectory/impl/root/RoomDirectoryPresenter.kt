@@ -42,7 +42,7 @@ class RoomDirectoryPresenter(
             mutableStateOf(false)
         }
         var searchQuery by rememberSaveable {
-            mutableStateOf<String?>(null)
+            mutableStateOf("")
         }
         val coroutineScope = rememberCoroutineScope()
         val roomDirectoryList = remember {
@@ -50,7 +50,6 @@ class RoomDirectoryPresenter(
         }
         val listState by roomDirectoryList.collectState()
         LaunchedEffect(searchQuery) {
-            if (searchQuery == null) return@LaunchedEffect
             // cancel load more right away
             loadingMore = false
             // debounce search query
