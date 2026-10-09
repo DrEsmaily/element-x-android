@@ -1,8 +1,8 @@
 package io.element.android.libraries.matrix.api.user
 
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNull
+import org.junit.Test
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 
 class UserPresenceTest {
     @Test fun onlineIsOnlyExplicitOnline() {
