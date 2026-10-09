@@ -40,3 +40,4 @@ SyncMe next release: remove only custom duplicate directory controls; preserve d
 SyncMe 180 event-driven presence release: 2026-10-10
 
 Event presence final release build trigger (revision 2).
+Verified SDK setPresence and event-driven Matrix m.presence long-poll; isolated build with selected-session online announcements.
