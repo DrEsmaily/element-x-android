@@ -299,20 +299,22 @@ class RoomListPresenter(
             .filter { it.isDm }
             .mapNotNull { it.dmUserId }
             .distinct()
-            .take(8)
         val presenceStates by client.presenceStates.collectAsState()
+        // No fixed user count: seed missing states once, in bounded background IO.
         LaunchedEffect(presenceIds) {
-            if (presenceIds.isNotEmpty()) {
-                val limiter = Semaphore(2)
-                while (true) {
-                    coroutineScope {
-                        presenceIds.map { id ->
-                            async { limiter.withPermit { client.getPresence(UserId(id)) } }
-                        }.awaitAll()
+            val limiter = Semaphore(2)
+            coroutineScope {
+                presenceIds.map { id ->
+                    async {
+                        if (presenceStates[id] == null) {
+                            limiter.withPermit { client.getPresence(UserId(id)) }
+                        }
                     }
-                    delay(10_000)
-                }
+                }.awaitAll()
             }
+        }
+        LaunchedEffect(listVisible, client.sessionId) {
+            if (listVisible) client.presenceUpdates.collect { }
         }
 
         val showEmpty by remember {
