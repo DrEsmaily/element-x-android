@@ -6,6 +6,7 @@ on:
     branches:
       - syncme-164-tags-pages
       - syncme-178-from-176
+      - syncme-187-presence-clean-from-180
     paths:
       - '.github/syncme-release-trigger.txt'
 
@@ -64,6 +65,10 @@ jobs:
           SYNCME_BUILD_NUMBER: ${{ github.run_number }}
         # Compress native .so files and let Android extract them on install; preserve all app features.
         run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=true -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
+
+      - name: Test SyncMe presence rules
+        if: github.ref_name == 'syncme-181-presence-from-180'
+        run: ./gradlew :libraries:matrix:api:testDebugUnitTest --tests '*UserPresenceTest' $CI_GRADLE_ARG_PROPERTIES
 
       - name: Generate full per-build continuation TXT
         if: always()
