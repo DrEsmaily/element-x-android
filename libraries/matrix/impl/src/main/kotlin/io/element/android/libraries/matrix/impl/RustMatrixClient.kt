@@ -227,6 +227,7 @@ class RustMatrixClient(
     override val presenceStates: StateFlow<Map<UserId, UserPresence>> = mutablePresenceStates
     private val presenceIo = dispatchers.io.limitedParallelism(4)
     private val presenceObserverStarted = AtomicBoolean(false)
+    private val presenceRefreshSlots = kotlinx.coroutines.sync.Semaphore(2)
 
     override fun trackPresence(userIds: Set<UserId>) {
         StartupTrace.mark("presence_track_called_count_" + userIds.size)
@@ -245,6 +246,7 @@ class RustMatrixClient(
         }
         if (presenceObserverStarted.compareAndSet(false, true)) {
             StartupTrace.mark("presence_observer_first_started")
+            sessionCoroutineScope.launch(presenceIo) { refreshOnlinePresence() }
             sessionCoroutineScope.launch(presenceIo) {
                 syncService.syncState.collectLatest { syncState ->
                     if (syncState == SyncState.Running) {
@@ -258,6 +260,28 @@ class RustMatrixClient(
         }
     }
 
+    // Bounded backup check for missed/delayed presence events. Server controls
+    // the earliest OFFLINE result after a force-stop; do not fabricate offline.
+    private suspend fun refreshOnlinePresence() {
+        while (kotlin.coroutines.coroutineContext.isActive) {
+            delay(12_000L)
+            if (syncService.syncState.value != SyncState.Running) continue
+            val peers = mutablePresenceStates.value.filterValues { it == UserPresence.Online }.keys.take(10)
+            for (peer in peers) {
+                sessionCoroutineScope.launch(presenceIo) {
+                    presenceRefreshSlots.withPermit {
+                        val fresh = fetchPresenceSnapshot(peer)
+                        if (fresh != UserPresence.Unknown && fresh != UserPresence.Online) {
+                            mutablePresenceStates.update { states ->
+                                if (states[peer] == UserPresence.Online) states + (peer to fresh) else states
+                            }
+                            StartupTrace.mark("presence_revalidation_non_online")
+                        }
+                    }
+                }
+            }
+        }
+    }
     private suspend fun fetchPresenceSnapshot(user: UserId): UserPresence =
         withContext(presenceIo) {
             runCatching {
@@ -298,7 +322,7 @@ class RustMatrixClient(
         )
         while (kotlin.coroutines.coroutineContext.isActive) {
             val session = sessionStore.getSession(sessionId.value) ?: break
-            val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=30000" +
+            val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=30000&set_presence=offline" +
                 "&filter=" + filter + (since?.let { "&since=" + URLEncoder.encode(it, "UTF-8") } ?: "")
             var connection: HttpURLConnection? = null
             try {
