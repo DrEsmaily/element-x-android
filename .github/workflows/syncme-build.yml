@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - syncme-164-tags-pages
+      - syncme-178-from-176
     paths:
       - '.github/syncme-release-trigger.txt'
 
