@@ -300,18 +300,15 @@ class RoomListPresenter(
             .mapNotNull { it.dmUserId }
             .distinct()
             .take(8)
-        var presenceStates by remember(client.sessionId) {
-            mutableStateOf<Map<String, UserPresence>>(emptyMap())
-        }
+        val presenceStates by client.presenceStates.collectAsState()
         LaunchedEffect(presenceIds) {
-            presenceStates = emptyMap()
             if (presenceIds.isNotEmpty()) {
                 val limiter = Semaphore(2)
                 while (true) {
-                    presenceStates = coroutineScope {
+                    coroutineScope {
                         presenceIds.map { id ->
-                            async { id to limiter.withPermit { client.getPresence(UserId(id)) } }
-                        }.awaitAll().toMap()
+                            async { limiter.withPermit { client.getPresence(UserId(id)) } }
+                        }.awaitAll()
                     }
                     delay(10_000)
                 }
