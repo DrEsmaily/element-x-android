@@ -8,6 +8,7 @@
 
 package io.element.android.features.home.impl.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -198,18 +200,26 @@ private fun RoomSummaryScaffoldRow(
             .padding(horizontal = 16.dp, vertical = 11.dp)
             .height(IntrinsicSize.Min),
     ) {
-        Avatar(
-            avatarData = room.avatarData,
-            avatarType = if (room.isSpace) {
-                AvatarType.Space(isTombstoned = room.isTombstoned)
-            } else {
-                AvatarType.Room(
-                    heroes = room.heroes,
-                    isTombstoned = room.isTombstoned,
+        Box(contentAlignment = Alignment.BottomEnd) {
+            Avatar(
+                avatarData = room.avatarData,
+                avatarType = if (room.isSpace) {
+                    AvatarType.Space(isTombstoned = room.isTombstoned)
+                } else {
+                    AvatarType.Room(
+                        heroes = room.heroes,
+                        isTombstoned = room.isTombstoned,
+                    )
+                },
+                hideImage = hideAvatarImage,
+            )
+            if (room.isDm && room.isOnline && !hideAvatarImage) {
+                Box(
+                    modifier = Modifier.size(11.dp)
+                        .background(Color(0xFF2BCB74), CircleShape)
                 )
-            },
-            hideImage = hideAvatarImage,
-        )
+            }
+        }
         Spacer(modifier = Modifier.width(16.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
