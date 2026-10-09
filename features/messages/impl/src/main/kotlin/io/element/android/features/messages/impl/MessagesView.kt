@@ -94,6 +94,7 @@ import io.element.android.features.messages.impl.timeline.model.TimelineItemGrou
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemStateEventContent
 import io.element.android.features.messages.impl.timeline.model.event.aTimelineItemTextContent
 import io.element.android.features.messages.impl.timeline.sendfailure.SendFailureDialogView
+import io.element.android.libraries.matrix.api.user.presenceLabel
 import io.element.android.features.messages.impl.topbars.MessagesViewTopBar
 import io.element.android.features.messages.impl.topbars.ThreadTopBar
 import io.element.android.features.messages.impl.voicemessages.composer.VoiceMessagePermissionRationaleDialog
@@ -251,6 +252,7 @@ fun MessagesView(
                             dmUserIdentityState = state.dmUserVerificationState,
                             sharedHistoryIcon = state.topBarSharedHistoryIcon,
                             dmUserStatus = state.dmUserStatus,
+                            presenceLabel = state.dmPresence.presenceLabel(System.currentTimeMillis()),
                             onBackClick = { hidingKeyboard { onBackClick() } },
                             onRoomDetailsClick = { hidingKeyboard { onRoomDetailsClick() } },
                             menuActions = {
