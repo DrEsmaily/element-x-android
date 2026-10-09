@@ -66,8 +66,16 @@ jobs:
         # Compress native .so files and let Android extract them on install; preserve all app features.
         run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=true -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
 
+      - name: Verify login and sync remain independent from Presence
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=libraries/matrix/impl/src/main/kotlin/io/element/android/libraries/matrix/impl/RustMatrixClient.kt
+          ! grep -Eq 'ProcessLifecycleOwner|processPresenceObserver|sessionIdFlow' "$file"
+          grep -F 'override suspend fun getPresence' "$file"
+          grep -F 'override suspend fun setOwnPresence' "$file"
       - name: Test SyncMe presence rules
-        if: github.ref_name == 'syncme-181-presence-from-180'
+        if: github.ref_name == 'syncme-187-presence-clean-from-180'
         run: ./gradlew :libraries:matrix:api:testDebugUnitTest --tests '*UserPresenceTest' $CI_GRADLE_ARG_PROPERTIES
 
       - name: Generate full per-build continuation TXT
