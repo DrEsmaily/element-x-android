@@ -27,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import dev.zacsweers.metro.Inject
+import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
 import im.vector.app.features.analytics.plan.Interaction
 import io.element.android.features.announcement.api.Announcement
 import io.element.android.features.announcement.api.AnnouncementService
@@ -119,6 +120,7 @@ class RoomListPresenter(
         val globalSearchState = globalSearchPresenter.present()
 
         LaunchedEffect(Unit) {
+            StartupTrace.mark("room_list_presenter_launch")
             roomListDataSource.launchIn(this)
         }
 
@@ -278,7 +280,11 @@ class RoomListPresenter(
         // A single session-scoped event stream supplies all DM presence states.
         val presenceIds = roomSummaries.dataOrNull().orEmpty().filter { it.isDm }
             .mapNotNull { it.dmUserId }.map(::UserId).toSet()
-        LaunchedEffect(presenceIds) { client.trackPresence(presenceIds) }
+        LaunchedEffect(presenceIds) {
+            StartupTrace.mark("presence_track_begin_count_" + presenceIds.size)
+            client.trackPresence(presenceIds)
+            StartupTrace.mark("presence_track_done")
+        }
         val presenceStates by client.presenceStates.collectAsState()
 
         val showEmpty by remember {
@@ -299,6 +305,7 @@ class RoomListPresenter(
             )
             showSkeleton -> RoomListContentState.Skeleton(count = 16)
             else -> {
+                StartupTrace.mark("room_list_visible")
                 coldStartWatcher.onRoomListVisible()
 
                 RoomListContentState.Rooms(
