@@ -222,6 +222,17 @@ class MessagesPresenter(
 
         val membersState by room.membersStateFlow.collectAsState()
         val dmRoomMember by room.getDirectRoomMember(membersState)
+        var syncmeOnline by remember { mutableStateOf(false) }
+        LaunchedEffect(dmRoomMember?.userId, roomInfo.isDm) {
+            syncmeOnline = false
+            val user = dmRoomMember?.userId
+            if (roomInfo.isDm && user != null) {
+                while (true) {
+                    syncmeOnline = matrixClient.isUserOnline(user)
+                    kotlinx.coroutines.delay(30_000)
+                }
+            }
+        }
         val roomMemberIdentityStateChanges = identityChangeState.roomMemberIdentityStateChanges
 
         // The top bar should show a "history" icon if:
@@ -345,6 +356,7 @@ class MessagesPresenter(
             pinnedMessagesBannerState = pinnedMessagesBannerState,
             dmUserVerificationState = dmUserVerificationState,
             dmUserStatus = roomInfo.dmUserStatus(),
+            syncmeOnline = syncmeOnline,
             roomMemberModerationState = roomMemberModerationState,
             topBarSharedHistoryIcon = topBarSharedHistoryIcon,
             successorRoom = roomInfo.successorRoom,
