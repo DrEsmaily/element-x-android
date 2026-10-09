@@ -246,14 +246,12 @@ class MessagesPresenter(
                 }
             }
         }
+        // Initial snapshot only; subsequent changes arrive through m.presence events.
         LaunchedEffect(dmRoomMember?.userId, presenceVisible) {
-            val target = dmRoomMember?.userId
-            if (presenceVisible && target != null) {
-                while (true) {
-                    matrixClient.getPresence(target)
-                    delay(10_000)
-                }
-            }
+            if (presenceVisible) dmRoomMember?.userId?.let { matrixClient.getPresence(it) }
+        }
+        LaunchedEffect(presenceVisible, matrixClient.sessionId) {
+            if (presenceVisible) matrixClient.presenceUpdates.collect { }
         }
 
         val roomMemberIdentityStateChanges = identityChangeState.roomMemberIdentityStateChanges
