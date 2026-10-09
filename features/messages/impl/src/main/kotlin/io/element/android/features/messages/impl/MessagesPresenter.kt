@@ -233,6 +233,14 @@ class MessagesPresenter(
             presenceVisible = true
             onPauseOrDispose { presenceVisible = false }
         }
+        LaunchedEffect(matrixClient.sessionId, presenceVisible) {
+            if (presenceVisible) {
+                while (true) {
+                    matrixClient.announceOnline()
+                    delay(20_000)
+                }
+            }
+        }
         LaunchedEffect(dmRoomMember?.userId, presenceVisible) {
             dmPresence = UserPresence.Unknown
             val target = dmRoomMember?.userId
