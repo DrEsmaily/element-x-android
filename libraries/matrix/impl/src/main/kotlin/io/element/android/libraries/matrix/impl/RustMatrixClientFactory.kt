@@ -9,6 +9,7 @@
 package io.element.android.libraries.matrix.impl
 
 import dev.zacsweers.metro.Inject
+import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
 import io.element.android.features.enterprise.api.ClientBuilderEnterpriseHook
 import io.element.android.libraries.androidutils.crypto.ClientSecret
 import io.element.android.libraries.core.coroutine.CoroutineDispatchers
@@ -77,6 +78,7 @@ class RustMatrixClientFactory(
     )
 
     suspend fun create(sessionData: SessionData): RustMatrixClient = withContext(coroutineDispatchers.io) {
+        StartupTrace.mark("rust_restore_begin")
         // This secret is called 'passphrase' for historical reasons, but it can be a raw key or an actual passphrase
         val clientSecret = sessionData.passphrase?.let(ClientSecret::fromString)
         val sessionPaths = sessionData.getSessionPaths()
@@ -109,6 +111,7 @@ class RustMatrixClientFactory(
                 ) as RustMatrixClientBuilder).inner
             }
             .use { it.build() }
+        StartupTrace.mark("rust_client_built")
 
         client.setMediaRetentionPolicy(
             MediaRetentionPolicy(
@@ -123,17 +126,21 @@ class RustMatrixClientFactory(
             )
         )
 
+        StartupTrace.mark("restore_session_begin")
         client.restoreSession(sessionData.toSession())
+        StartupTrace.mark("restore_session_done")
 
         val (anonymizedAccessToken, anonymizedRefreshToken) = client.session().anonymizedTokens()
 
         client.setUtdDelegate(UtdTracker(analyticsService))
 
+        StartupTrace.mark("sync_service_create_begin")
         val syncService = client.syncService()
             .withSharePos(true)
             .withOfflineMode()
             .finish()
 
+        StartupTrace.mark("sync_service_created")
         innerMatrixClientFactory.create(
             sessionPaths = sessionData.getSessionPaths(),
             innerClient = client,
@@ -143,6 +150,7 @@ class RustMatrixClientFactory(
             isMessageSearchAvailable = isMessageSearchAvailable,
             sessionDelegate = sessionDelegate,
         ).also {
+            StartupTrace.mark("rust_client_ready")
             Timber.tag("RustMatrixClient").i("Creating Client with access token '$anonymizedAccessToken' and refresh token '$anonymizedRefreshToken'")
         }
     }
