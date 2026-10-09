@@ -54,6 +54,14 @@ import io.element.android.libraries.featureflag.api.ShowAllActivityInRoomListFea
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.UserId
+import io.element.android.libraries.matrix.api.user.UserPresence
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import io.element.android.libraries.matrix.api.encryption.RecoveryState
 import io.element.android.libraries.matrix.api.roomlist.RoomList
 import io.element.android.libraries.matrix.api.roomlist.RoomListFilter
@@ -265,6 +273,30 @@ class RoomListPresenter(
             roomListDataSource.roomSummariesFlow.collect { value = AsyncData.Success(it) }
         }
         val loadingState by roomListDataSource.loadingState.collectAsState()
+        // Small read-only batch. It never writes presence or changes app sync.
+        val presenceIds = roomSummaries.dataOrNull().orEmpty()
+            .filter { it.isDm }
+            .mapNotNull { it.dmUserId }
+            .distinct()
+            .take(8)
+        var presenceStates by remember(client.sessionId) {
+            mutableStateOf<Map<String, UserPresence>>(emptyMap())
+        }
+        LaunchedEffect(presenceIds) {
+            presenceStates = emptyMap()
+            if (presenceIds.isNotEmpty()) {
+                val limiter = Semaphore(2)
+                while (true) {
+                    presenceStates = coroutineScope {
+                        presenceIds.map { id ->
+                            async { id to limiter.withPermit { client.getPresence(UserId(id)) } }
+                        }.awaitAll().toMap()
+                    }
+                    delay(10_000)
+                }
+            }
+        }
+
         val showEmpty by remember {
             derivedStateOf {
                 (loadingState as? RoomList.LoadingState.Loaded)?.numberOfRooms == 0
@@ -291,7 +323,9 @@ class RoomListPresenter(
                     showUnreadCount = showUnreadCount,
                     fullScreenIntentPermissionsState = fullScreenIntentPermissionsPresenter.present(),
                     batteryOptimizationState = batteryOptimizationPresenter.present(),
-                    summaries = roomSummaries.dataOrNull().orEmpty().toImmutableList(),
+                    summaries = roomSummaries.dataOrNull().orEmpty().map { summary ->
+                        summary.copy(isOnline = presenceStates[summary.dmUserId] is UserPresence.Online)
+                    }.toImmutableList(),
                     showAllActivity = showAllActivity,
                     seenRoomInvites = seenRoomInvites.toImmutableSet(),
                 )
