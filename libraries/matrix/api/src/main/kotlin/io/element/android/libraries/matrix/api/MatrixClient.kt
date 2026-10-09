@@ -90,6 +90,10 @@ interface MatrixClient : ClientUrlContentFetcher {
     /** Optional server presence lookup. Never affects sync or login. */
     suspend fun getPresence(userId: UserId): UserPresence = UserPresence.Unknown
 
+    /** Latest confirmed remote states for this session, shared by all screens. */
+    val presenceStates: StateFlow<Map<String, UserPresence>>
+        get() = kotlinx.coroutines.flow.MutableStateFlow(emptyMap())
+
     /** Best-effort online heartbeat for the selected session, only after connected sync. */
     suspend fun announceOnline(): Unit = Unit
 
