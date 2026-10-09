@@ -40,3 +40,4 @@ SyncMe clean release candidate from Build 180 with optional on-demand presence o
 SyncMe clean candidate: all Presence endpoints disabled until SyncState.Running; preserve Build 180 sync path.
 Fix client presence reporting: set online after Running on resumed room list and DM screens.
 SyncMe 197 independent build: fix page-navigation race, selected account, exact DM user ids, reduced disk writes.
+SyncMe Presence hang mitigation: isolate HTTP IO from SDK dispatcher, cap concurrency to 2, requests to 12, 2s network timeout.
