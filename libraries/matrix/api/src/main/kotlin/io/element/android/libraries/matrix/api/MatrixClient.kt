@@ -47,6 +47,7 @@ import io.element.android.libraries.matrix.api.sync.SyncService
 import io.element.android.libraries.matrix.api.timeline.Timeline
 import io.element.android.libraries.matrix.api.user.MatrixSearchUserResults
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.api.user.UserPresence
 import io.element.android.libraries.matrix.api.user.UserStatus
 import io.element.android.libraries.matrix.api.verification.SessionVerificationService
 import kotlinx.collections.immutable.ImmutableList
@@ -85,6 +86,10 @@ interface MatrixClient : ClientUrlContentFetcher {
 
     /** Controls the sync loop of this session and exposes its state. */
     val syncService: SyncService
+
+    /** Optional server presence lookup. Never affects sync or login. */
+    suspend fun getPresence(userId: UserId): UserPresence = UserPresence.Unknown
+
 
     /** Handles verifying this session against the user's other devices or their recovery key. */
     val sessionVerificationService: SessionVerificationService
