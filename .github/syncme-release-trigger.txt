@@ -50,3 +50,5 @@ Diagnostics report export corrected using cache FileProvider.
 
 Diagnostics text viewer / copy all release.\n
 Deep startup diagnosis includes frame timing watchdog and memory.
+
+Exit reason and touch markers enabled.
