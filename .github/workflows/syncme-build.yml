@@ -61,7 +61,8 @@ jobs:
       - name: Build optimized SyncMe release APK
         env:
           SYNCME_BUILD_NUMBER: ${{ github.run_number }}
-        run: ./gradlew :app:assembleGplayRelease -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
+        # Compress native .so files and let Android extract them on install; preserve all app features.
+        run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=true -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
 
       - name: Generate full per-build continuation TXT
         if: always()
