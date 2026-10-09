@@ -146,6 +146,8 @@ import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import io.element.android.libraries.matrix.api.user.UserPresence
 import io.element.android.libraries.matrix.api.user.OwnPresenceMode
+import io.element.android.libraries.sessionstorage.api.sessionIdFlow
+import kotlinx.coroutines.flow.collect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -212,12 +214,15 @@ class RustMatrixClient(
         else OwnPresenceMode.SHOW_ACTIVITY
     }.getOrDefault(OwnPresenceMode.SHOW_ACTIVITY)
 
+    @Volatile private var isAppForeground = false
     private val processPresenceObserver = LifecycleEventObserver { _, event ->
         when (event) {
             Lifecycle.Event.ON_START, Lifecycle.Event.ON_STOP -> {
-                // Account state remains independent, even when background sync is running.
-                val active = event == Lifecycle.Event.ON_START
-                sessionCoroutineScope.launch { sendOwnPresence(ownPresenceMode, active) }
+                isAppForeground = event == Lifecycle.Event.ON_START
+                sessionCoroutineScope.launch {
+                    val isSelectedSession = sessionStore.getLatestSession()?.userId == sessionId.value
+                    sendOwnPresence(ownPresenceMode, isAppForeground && isSelectedSession)
+                }
             }
             else -> Unit
         }
@@ -239,7 +244,13 @@ class RustMatrixClient(
 
 
     init {
+        isAppForeground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
         ProcessLifecycleOwner.get().lifecycle.addObserver(processPresenceObserver)
+        sessionCoroutineScope.launch {
+            sessionStore.sessionIdFlow().collect { selectedId ->
+                sendOwnPresence(ownPresenceMode, isAppForeground && selectedId == sessionId.value)
+            }
+        }
         // Matrix Rust SDK disables intermediate send-queue media upload progress by default.
         // SyncMe needs the actual in-flight values so the UI can render 0..100% in real time.
         innerClient.enableSendQueueUploadProgress(true)
