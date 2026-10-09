@@ -146,6 +146,9 @@ import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import io.element.android.libraries.matrix.api.user.UserPresence
 import io.element.android.libraries.matrix.api.user.OwnPresenceMode
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.ProcessLifecycleOwner
 import org.matrix.rustcomponents.sdk.PresenceState
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -203,8 +206,40 @@ class RustMatrixClient(
     override val homeserverUrl: String = innerClient.homeserver()
     override val sessionCoroutineScope = appCoroutineScope.childScope(dispatchers.main, "Session-$sessionId")
     private val sessionDispatcher = dispatchers.io.limitedParallelism(64)
+    private val ownPresenceFile = File(sessionPaths.fileDirectory, "syncme-presence-mode")
+    @Volatile private var ownPresenceMode = runCatching {
+        if (ownPresenceFile.readText().trim() == "offline") OwnPresenceMode.APPEAR_OFFLINE
+        else OwnPresenceMode.SHOW_ACTIVITY
+    }.getOrDefault(OwnPresenceMode.SHOW_ACTIVITY)
+
+    private val processPresenceObserver = LifecycleEventObserver { _, event ->
+        when (event) {
+            Lifecycle.Event.ON_START, Lifecycle.Event.ON_STOP -> {
+                // Account state remains independent, even when background sync is running.
+                val active = event == Lifecycle.Event.ON_START
+                sessionCoroutineScope.launch { sendOwnPresence(ownPresenceMode, active) }
+            }
+            else -> Unit
+        }
+    }
+    
+    private suspend fun sendOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> =
+        withContext(sessionDispatcher) {
+            runCatchingExceptions {
+                val state = when {
+                    mode == OwnPresenceMode.APPEAR_OFFLINE -> PresenceState.OFFLINE
+                    active -> PresenceState.ONLINE
+                    else -> PresenceState.UNAVAILABLE
+                }
+                innerClient.setPresence(state, true)
+            }
+        }
+    
+    override suspend fun isAppearingOffline(): Boolean = ownPresenceMode == OwnPresenceMode.APPEAR_OFFLINE
+
 
     init {
+        ProcessLifecycleOwner.get().lifecycle.addObserver(processPresenceObserver)
         // Matrix Rust SDK disables intermediate send-queue media upload progress by default.
         // SyncMe needs the actual in-flight values so the UI can render 0..100% in real time.
         innerClient.enableSendQueueUploadProgress(true)
@@ -255,19 +290,17 @@ class RustMatrixClient(
         }.getOrDefault(UserPresence.Unknown)
     }
 
-    override suspend fun setOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> =
-        withContext(sessionDispatcher) {
-            runCatchingExceptions {
-                // The selected value is retained for future SDK-generated sync requests.
-                // Keeping the sync service running preserves messages and notifications.
-                val state = when {
-                    mode == OwnPresenceMode.APPEAR_OFFLINE -> PresenceState.OFFLINE
-                    active -> PresenceState.ONLINE
-                    else -> PresenceState.UNAVAILABLE
-                }
-                innerClient.setPresence(state, true)
+    override suspend fun setOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> {
+        val result = sendOwnPresence(mode, active)
+        if (result.isSuccess) {
+            ownPresenceMode = mode
+            runCatching {
+                ownPresenceFile.parentFile?.mkdirs()
+                ownPresenceFile.writeText(if (mode == OwnPresenceMode.APPEAR_OFFLINE) "offline" else "show")
             }
         }
+        return result
+    }
 
     override val syncService = RustSyncService(
         inner = innerSyncService,
@@ -771,6 +804,7 @@ class RustMatrixClient(
     }
 
     internal suspend fun destroy() {
+        ProcessLifecycleOwner.get().lifecycle.removeObserver(processPresenceObserver)
         innerNotificationClient.close()
 
         roomFactory.destroy()
