@@ -384,7 +384,7 @@ private fun ColumnScope.GeneralSection(
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Info())),
         onClick = {
             context.startActivity(Intent("io.syncme.EXPORT_STARTUP_TRACE").apply {
-                setClassName(context.packageName, context.packageName + ".MainActivity")
+                setClassName(context.packageName, "io.element.android.x.MainActivity")
                 addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             })
         },
