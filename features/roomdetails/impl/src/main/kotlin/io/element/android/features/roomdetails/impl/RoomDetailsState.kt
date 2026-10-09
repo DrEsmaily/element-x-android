@@ -40,8 +40,6 @@ data class RoomDetailsState(
     val isFavorite: Boolean,
     val displayRolesAndPermissionsSettings: Boolean,
     val isPublic: Boolean,
-    val directoryPublished: Boolean = false,
-    val canManageDirectory: Boolean = false,
     val heroes: ImmutableList<MatrixUser>,
     val pinnedMessagesCount: Int?,
     val snackbarMessage: SnackbarMessage?,
