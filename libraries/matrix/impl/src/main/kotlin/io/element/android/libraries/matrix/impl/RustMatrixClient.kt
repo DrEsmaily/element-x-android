@@ -112,6 +112,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
