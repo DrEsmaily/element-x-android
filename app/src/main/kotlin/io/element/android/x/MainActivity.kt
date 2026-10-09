@@ -63,6 +63,7 @@ class MainActivity : NodeActivity() {
     private lateinit var mainNode: MainNode
     private lateinit var appBindings: AppBindings
     private var firstDrawRecorded = false
+    private var firstTouchRecorded = false
     private var frameThread: HandlerThread? = null
     private var frameListener: android.view.Window.OnFrameMetricsAvailableListener? = null
     private var lastSlowFrameLog = 0L
@@ -74,6 +75,19 @@ class MainActivity : NodeActivity() {
         StartupTrace.mark("splash_installed")
         super.onCreate(savedInstanceState)
         StartupTrace.mark("activity_super_onCreate_done")
+        lifecycleScope.launch(Dispatchers.IO) {
+            if (android.os.Build.VERSION.SDK_INT >= 30) {
+                runCatching {
+                    val manager = getSystemService(android.content.Context.ACTIVITY_SERVICE)
+                        as android.app.ActivityManager
+                    manager.getHistoricalProcessExitReasons(packageName, 0, 5)
+                        .forEachIndexed { index, info ->
+                            StartupTrace.mark("historical_exit_" + index + "_reason_" + info.reason +
+                                "_importance_" + info.importance)
+                        }
+                }.onFailure { StartupTrace.mark("exit_history_unavailable") }
+            }
+        }
         installFrameDiagnostics()
         appBindings = bindings()
         setupLockManagement(appBindings.lockScreenService(), appBindings.lockScreenEntryPoint())
@@ -265,6 +279,14 @@ class MainActivity : NodeActivity() {
         }
         frameListener = listener
         window.addOnFrameMetricsAvailableListener(listener, Handler(frameThread!!.looper))
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (!firstTouchRecorded) {
+            firstTouchRecorded = true
+            StartupTrace.mark("first_touch_delivered_action_" + ev.actionMasked)
+        }
+        return super.dispatchTouchEvent(ev)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
