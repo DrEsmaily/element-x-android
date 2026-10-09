@@ -16,6 +16,7 @@ import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.matrix.api.core.RoomAlias
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.room.RoomMember
+import io.element.android.libraries.matrix.api.user.UserPresence
 import io.element.android.libraries.matrix.api.room.RoomNotificationSettings
 import io.element.android.libraries.matrix.api.room.history.RoomHistoryVisibility
 import io.element.android.libraries.matrix.api.user.MatrixUser
@@ -57,6 +58,8 @@ data class RoomDetailsState(
     val canCloseGroup: Boolean = false,
     val closingGroup: Boolean = false,
     val closeGroupError: String? = null,
+    val dmPresence: UserPresence = UserPresence.Unknown,
+    val groupOnlineCount: Int? = null,
 ) {
     val roomBadges = buildList {
         if (isEncrypted) {
