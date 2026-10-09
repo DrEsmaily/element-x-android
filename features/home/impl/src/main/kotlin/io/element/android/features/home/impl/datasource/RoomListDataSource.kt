@@ -9,6 +9,7 @@
 package io.element.android.features.home.impl.datasource
 
 import dev.zacsweers.metro.Inject
+import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
 import dev.zacsweers.metro.SingleIn
 import io.element.android.features.home.impl.model.RoomListRoomSummary
 import io.element.android.libraries.androidutils.diff.DiffCacheUpdater
@@ -84,9 +85,11 @@ class RoomListDataSource(
     val loadingState = roomList.loadingState
 
     fun launchIn(coroutineScope: CoroutineScope): Job {
+        StartupTrace.mark("room_list_observe_start")
         return roomList
             .summaries
             .onEach { roomSummaries ->
+                StartupTrace.mark("room_list_snapshot_received_size_" + roomSummaries.size)
                 replaceWith(roomSummaries)
             }
             .launchIn(coroutineScope)
@@ -200,6 +203,7 @@ class RoomListDataSource(
             _roomSummariesFlow.emit(roomListRoomSummaries.distinctBy { it.roomId }.toImmutableList())
         } else {
             _roomSummariesFlow.emit(roomListRoomSummaries.toImmutableList())
+            StartupTrace.mark("room_list_first_emit_size_" + roomListRoomSummaries.size)
         }
     }
 
