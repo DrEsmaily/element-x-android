@@ -41,3 +41,4 @@ SyncMe 181 isolated CI verification from confirmed Build 180; presence foundatio
 
 SyncMe 181 explicit GitHub Actions push-trigger retry after connector permissions confirmation, 2026-10-09.
 SyncMe 181 validate presence formatting helpers and unit-test compilation at commit 9375669.
+SyncMe 181 compile presence Matrix API and DM header integration, commit 89c838f.
