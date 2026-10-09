@@ -49,6 +49,7 @@ import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.preview.ROOM_NAME
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.user.DisplayedStatus
@@ -69,6 +70,7 @@ internal fun MessagesViewTopBar(
     dmUserIdentityState: IdentityState?,
     sharedHistoryIcon: SharedHistoryIcon,
     dmUserStatus: DisplayedStatus?,
+    syncmeOnline: Boolean = false,
     onRoomDetailsClick: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -97,6 +99,7 @@ internal fun MessagesViewTopBar(
                     isTombstoned = isTombstoned,
                     heroes = heroes,
                     dmUserStatus = dmUserStatus,
+                    syncmeOnline = syncmeOnline,
                     modifier = titleModifier
                 )
 
@@ -151,6 +154,7 @@ private fun RoomAvatarAndNameRow(
     heroes: ImmutableList<AvatarData>,
     isTombstoned: Boolean,
     dmUserStatus: DisplayedStatus?,
+    syncmeOnline: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -164,14 +168,19 @@ private fun RoomAvatarAndNameRow(
                 isTombstoned = isTombstoned,
             ),
         )
-        DisplayNameWithStatus(
-            name = roomName ?: stringResource(CommonStrings.common_no_room_name),
-            status = dmUserStatus,
-            modifier = Modifier.padding(start = 8.dp),
-            style = ElementTheme.typography.fontBodyLgMedium,
-            nameColor = ElementTheme.colors.textPrimary,
-            nameFontStyle = FontStyle.Italic.takeIf { roomName == null },
-        )
+        Column(modifier = Modifier.padding(start = 8.dp)) {
+            DisplayNameWithStatus(
+                name = roomName ?: stringResource(CommonStrings.common_no_room_name),
+                status = dmUserStatus,
+                style = ElementTheme.typography.fontBodyLgMedium,
+                nameColor = ElementTheme.colors.textPrimary,
+                nameFontStyle = FontStyle.Italic.takeIf { roomName == null },
+            )
+            if (syncmeOnline) {
+                Text(text = "Online", style = ElementTheme.typography.fontBodySmRegular,
+                    color = ElementTheme.colors.textSecondary)
+            }
+        }
     }
 }
 
