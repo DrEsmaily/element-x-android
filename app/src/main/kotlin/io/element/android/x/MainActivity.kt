@@ -10,6 +10,10 @@ package io.element.android.x
 
 import android.content.Intent
 import androidx.core.content.FileProvider
+import android.content.ClipData
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
 import java.io.File
 import android.os.Bundle
@@ -192,15 +196,41 @@ class MainActivity : NodeActivity() {
 
     private fun exportStartupTrace() {
         StartupTrace.mark("export_requested")
-        val file = File(filesDir, "syncme-startup-trace.txt")
-        if (!file.exists()) return
-        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
-        val share = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        lifecycleScope.launch {
+            val exportResult = withContext(Dispatchers.IO) {
+                runCatching {
+                    val source = File(filesDir, "syncme-startup-trace.txt")
+                    // Startup logging uses an async writer. Give the export marker a chance to flush.
+                    kotlinx.coroutines.delay(150)
+                    check(source.isFile) { "Diagnostic report is not available yet" }
+                    val output = File(cacheDir, "syncme-startup-diagnostics.txt")
+                    source.copyTo(output, overwrite = true)
+                    output
+                }
+            }
+            exportResult.onSuccess { output ->
+                runCatching {
+                    // The existing cache root is already declared in FileProvider and works
+                    // with this release's applicationIdSuffix.
+                    val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", output)
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        clipData = ClipData.newRawUri("SyncMe startup diagnostics", uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(Intent.createChooser(send, "Share SyncMe startup diagnostics"))
+                }.onFailure { error ->
+                    StartupTrace.mark("export_share_failed_" + error.javaClass.simpleName)
+                    Timber.tag(loggerTag.value).e(error, "Startup diagnostics sharing failed")
+                    Toast.makeText(this@MainActivity, "Cannot share diagnostics. Try again.", Toast.LENGTH_LONG).show()
+                }
+            }.onFailure { error ->
+                StartupTrace.mark("export_copy_failed_" + error.javaClass.simpleName)
+                Timber.tag(loggerTag.value).e(error, "Startup diagnostics export failed")
+                Toast.makeText(this@MainActivity, "Cannot prepare diagnostics report.", Toast.LENGTH_LONG).show()
+            }
         }
-        startActivity(Intent.createChooser(share, "Share SyncMe startup diagnostics"))
     }
 
     override fun onPause() {
