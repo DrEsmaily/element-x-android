@@ -281,8 +281,8 @@ class MessagesPresenter(
                     it.membership == RoomMembershipState.JOIN
                 }
                 // Avoid background polling, large-group request storms and partial estimates.
-                if (joined.size in 1..30 && joined.size.toLong() == roomInfo.activeMembersCount) {
-                    val limiter = Semaphore(5)
+                if (joined.size in 1..12 && joined.size.toLong() == roomInfo.activeMembersCount) {
+                    val limiter = Semaphore(2)
                     while (true) {
                         val states = coroutineScope {
                             joined.map { member ->
