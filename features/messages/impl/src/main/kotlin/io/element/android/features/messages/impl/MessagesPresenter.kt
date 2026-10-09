@@ -228,7 +228,8 @@ class MessagesPresenter(
         val dmRoomMember by room.getDirectRoomMember(membersState)
         // Read-only, on-demand status. Does not send presence events or affect login.
         var presenceVisible by remember { mutableStateOf(false) }
-        var dmPresence by remember { mutableStateOf<UserPresence>(UserPresence.Unknown) }
+        val sharedPresence by matrixClient.presenceStates.collectAsState()
+        val dmPresence = sharedPresence[dmRoomMember?.userId?.value] ?: UserPresence.Unknown
         LifecycleResumeEffect(dmRoomMember?.userId) {
             presenceVisible = true
             onPauseOrDispose { presenceVisible = false }
@@ -246,11 +247,10 @@ class MessagesPresenter(
             }
         }
         LaunchedEffect(dmRoomMember?.userId, presenceVisible) {
-            dmPresence = UserPresence.Unknown
             val target = dmRoomMember?.userId
             if (presenceVisible && target != null) {
                 while (true) {
-                    dmPresence = matrixClient.getPresence(target)
+                    matrixClient.getPresence(target)
                     delay(10_000)
                 }
             }
