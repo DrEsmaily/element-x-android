@@ -59,6 +59,7 @@ import io.element.android.libraries.designsystem.theme.components.HorizontalDivi
 import io.element.android.libraries.designsystem.theme.components.Icon
 import io.element.android.libraries.designsystem.theme.components.IconSource
 import io.element.android.libraries.designsystem.theme.components.ListItem
+import io.element.android.libraries.designsystem.theme.components.ListSectionHeader
 import io.element.android.libraries.designsystem.theme.components.ListItemStyle
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.CommonDrawables
@@ -212,65 +213,62 @@ private fun ColumnScope.MultiAccountSection(
     state: PreferencesRootState,
     onAddAccountClick: () -> Unit,
 ) {
-    HorizontalDivider()
     if (state.otherSessions.isEmpty()) {
-        AddAccountItem(onAddAccountClick)
+        HorizontalDivider()
+        if (state.otherSessions.size + 1 < 3) AddAccountItem(onAddAccountClick)
     } else {
         val expandedStateDescription = if (state.isOtherAccountsSectionExpanded) {
             stringResource(CommonStrings.a11y_state_expanded)
         } else {
             stringResource(CommonStrings.a11y_state_collapsed)
         }
-        ListItem(
-            modifier = Modifier.semantics {
-                stateDescription = expandedStateDescription
-            },
-            content = { Text(stringResource(CommonStrings.common_switch_account)) },
-            onClick = { state.eventSink(PreferencesRootEvent.ToggleOtherAccountsExpanded) },
-            trailingContent = ListItemContent.Custom { _ ->
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { stateDescription = expandedStateDescription }
+                .clickable { state.eventSink(PreferencesRootEvent.ToggleOtherAccountsExpanded) },
+        ) {
+            ListSectionHeader(
+                title = stringResource(CommonStrings.common_switch_account),
+                hasDivider = true,
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AnimatedVisibility(
+                    visible = !state.isOtherAccountsSectionExpanded,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
                 ) {
-                    AnimatedVisibility(
-                        visible = !state.isOtherAccountsSectionExpanded,
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                    ) {
-                        AvatarRow(
-                            avatarDataList = state.otherSessions
-                                .take(3)
-                                .map { it.getAvatarData(AvatarSize.OtherAccountItem) }
-                                .toImmutableList(),
-                            avatarType = AvatarType.User,
-                            lastOnTop = true,
-                        )
-                    }
-                    // Animate the chevron icon to rotate when the section is expanded/collapsed
-                    val rotation: Float by animateFloatAsState(
-                        targetValue = if (state.isOtherAccountsSectionExpanded) -180f else 0f,
-                        animationSpec = tween(
-                            delayMillis = 0,
-                            durationMillis = 300,
-                        ),
-                        label = "chevron"
-                    )
-                    Icon(
-                        modifier = Modifier.rotate(rotation),
-                        imageVector = CompoundIcons.ChevronDown(),
-                        contentDescription = null,
+                    AvatarRow(
+                        avatarDataList = state.otherSessions
+                            .take(3)
+                            .map { it.getAvatarData(AvatarSize.OtherAccountItem) }
+                            .toImmutableList(),
+                        avatarType = AvatarType.User,
+                        lastOnTop = true,
                     )
                 }
-            },
-        )
+                val rotation: Float by animateFloatAsState(
+                    targetValue = if (state.isOtherAccountsSectionExpanded) -180f else 0f,
+                    animationSpec = tween(delayMillis = 0, durationMillis = 300),
+                    label = "chevron",
+                )
+                Icon(
+                    modifier = Modifier.rotate(rotation),
+                    imageVector = CompoundIcons.ChevronDown(),
+                    contentDescription = null,
+                )
+            }
+        }
         AnimatedVisibility(
             visible = state.isOtherAccountsSectionExpanded,
         ) {
             Column {
-                HorizontalDivider(
-                    thickness = 1.dp,
-                    color = ElementTheme.colors.bgSubtleSecondary,
-                )
                 state.otherSessions.forEach { matrixUser ->
                     MatrixUserRow(
                         modifier = Modifier
@@ -283,7 +281,7 @@ private fun ColumnScope.MultiAccountSection(
                         verticalSpaceWidth = 16.dp,
                     )
                 }
-                AddAccountItem(onAddAccountClick)
+                if (state.otherSessions.size + 1 < 3) AddAccountItem(onAddAccountClick)
             }
         }
     }
