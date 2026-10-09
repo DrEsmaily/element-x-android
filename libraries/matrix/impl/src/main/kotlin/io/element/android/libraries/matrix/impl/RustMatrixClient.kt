@@ -247,6 +247,32 @@ class RustMatrixClient(
             }.getOrDefault(UserPresence.Unknown)
         }
 
+    override suspend fun announceOnline() {
+        // Best effort: never block login, sync, or navigation on presence.
+        kotlinx.coroutines.withContext(presenceIo) {
+            if (syncService.syncState.value != SyncState.Running) return@withContext
+            if (sessionStore.getLatestSession()?.userId != sessionId.value) return@withContext
+            val session = sessionStore.getSession(sessionId.value) ?: return@withContext
+            runCatching {
+                val endpoint = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/presence/" +
+                    URLEncoder.encode(sessionId.value, "UTF-8") + "/status"
+                val connection = URL(endpoint).openConnection() as HttpURLConnection
+                try {
+                    connection.requestMethod = "PUT"
+                    connection.connectTimeout = 2500
+                    connection.readTimeout = 2500
+                    connection.doOutput = true
+                    connection.setRequestProperty("Authorization", "Bearer " + session.accessToken)
+                    connection.setRequestProperty("Content-Type", "application/json")
+                    connection.outputStream.use { it.write("""{"presence":"online"}""".toByteArray(Charsets.UTF_8)) }
+                    connection.responseCode
+                } finally {
+                    connection.disconnect()
+                }
+            }
+        }
+    }
+
     override val roomMembershipObserver = RoomMembershipObserver()
 
     override val syncService = RustSyncService(
