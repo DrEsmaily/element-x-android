@@ -13,6 +13,7 @@ on:
       - syncme-222-deep-startup-network-trace
       - syncme-225-last-ten-startup-logs
       - syncme-226-presence-offline-fast
+      - syncme-227-background-away
     paths:
       - '.github/syncme-release-trigger.txt'
 
