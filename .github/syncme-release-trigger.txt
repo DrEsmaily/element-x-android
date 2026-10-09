@@ -40,3 +40,5 @@ SyncMe next release: remove only custom duplicate directory controls; preserve d
 SyncMe dedicated build: minimal DM presence only, base release 180; green dot list and Online header.
 
 Final dedicated minimal presence trigger: read-only, DM-only, no group/status settings.
+
+Presence-only retry: remove unresolved OwnPresenceMode and displayText references.
