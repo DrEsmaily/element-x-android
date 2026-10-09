@@ -57,6 +57,7 @@ data class MessagesState(
     val pinnedMessagesBannerState: PinnedMessagesBannerState,
     val dmUserVerificationState: IdentityState?,
     val dmUserStatus: DisplayedStatus?,
+    val syncmeOnline: Boolean = false,
     val roomMemberModerationState: RoomMemberModerationState,
     /** Type of "shared history" icon to show in the top bar. */
     val topBarSharedHistoryIcon: SharedHistoryIcon,
