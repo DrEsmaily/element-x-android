@@ -52,6 +52,10 @@ class CreateRoomConfigStore(
         }
     }
 
+    fun setPublishInDirectory(publish: Boolean) {
+        createRoomConfigFlow.getAndUpdate { it.copy(publishInDirectory = publish) }
+    }
+
     fun setTopic(topic: String) {
         createRoomConfigFlow.getAndUpdate { config ->
             config.copy(topic = topic.takeIf { it.isNotEmpty() })
