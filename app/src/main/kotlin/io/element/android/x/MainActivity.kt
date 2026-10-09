@@ -15,6 +15,7 @@ import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
+import io.element.android.libraries.matrix.api.user.SyncMeAppVisibility
 import java.io.File
 import android.os.Bundle
 import android.os.SystemClock
@@ -222,7 +223,15 @@ class MainActivity : NodeActivity() {
         StartupTrace.mark(if (hasFocus) "window_focus_gained" else "window_focus_lost")
     }
 
+    override fun onStart() {
+        super.onStart()
+        SyncMeAppVisibility.setForeground(true)
+        StartupTrace.mark("presence_app_foreground")
+    }
+
     override fun onStop() {
+        SyncMeAppVisibility.setForeground(false)
+        StartupTrace.mark("presence_app_background")
         StartupTrace.mark("activity_onStop")
         super.onStop()
     }
