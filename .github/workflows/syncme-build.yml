@@ -66,6 +66,17 @@ jobs:
         # Compress native .so files and let Android extract them on install; preserve all app features.
         run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=true -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
 
+      - name: Test clean Matrix Presence rules
+        run: ./gradlew :libraries:matrix:api:testDebugUnitTest --tests '*UserPresenceTest' $CI_GRADLE_ARG_PROPERTIES
+
+      - name: Verify Presence cannot alter Matrix startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          file=libraries/matrix/impl/src/main/kotlin/io/element/android/libraries/matrix/impl/RustMatrixClient.kt
+          ! grep -Eq 'processPresenceObserver|setPresence\(|sessionIdFlow' "$file"
+          grep -F 'override suspend fun getPresence' "$file"
+
       - name: Generate full per-build continuation TXT
         if: always()
         shell: bash
