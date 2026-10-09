@@ -26,8 +26,8 @@ jobs:
         shell: bash
         run: |
           cat > /tmp/resolve-aar.init.gradle <<'GROOVY'
-          gradle.projectsEvaluated {
-            rootProject.tasks.register("fetchPinnedMatrixAar") {
+          gradle.beforeProject { p ->
+            if (p.path == ":") p.tasks.register("fetchPinnedMatrixAar") {
               doLast {
                 def config = rootProject.project(":libraries:matrix:impl").configurations.getByName("releaseRuntimeClasspath")
                 def artifact = config.resolvedConfiguration.resolvedArtifacts.find {
