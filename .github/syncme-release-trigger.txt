@@ -44,3 +44,4 @@ SyncMe 181 validate presence formatting helpers and unit-test compilation at com
 SyncMe 181 compile presence Matrix API and DM header integration, commit 89c838f.
 SyncMe 181 complete UI/SDK compile validation, commit 99fc9cf5, 2026-10-09.
 SyncMe presence release candidate: full Android UI, lifecycle privacy, list badges, group counts, unit tests; 2026-10-09.
+SyncMe connection recovery: remove presence network calls during Matrix client initialization.
