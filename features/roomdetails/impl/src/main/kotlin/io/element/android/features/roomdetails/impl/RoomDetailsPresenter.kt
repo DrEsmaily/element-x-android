@@ -43,7 +43,6 @@ import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
-import io.element.android.libraries.matrix.api.roomdirectory.RoomVisibility
 import io.element.android.libraries.matrix.api.room.JoinedRoom
 import io.element.android.libraries.matrix.api.room.RoomMember
 import io.element.android.libraries.matrix.api.room.join.JoinRule
@@ -103,12 +102,6 @@ class RoomDetailsPresenter(
         val roomTopic by remember { derivedStateOf { roomInfo.topic } }
         val isFavorite by remember { derivedStateOf { roomInfo.isFavorite } }
         val joinRule by remember { derivedStateOf { roomInfo.joinRule } }
-        var directoryPublished by androidx.compose.runtime.remember(room.roomId) {
-            androidx.compose.runtime.mutableStateOf(false)
-        }
-        LaunchedEffect(joinRule) {
-            if (joinRule == JoinRule.Public) directoryPublished = true
-        }
         val hasNewContent by remember {
             derivedStateOf {
                 roomInfo.numUnreadMessages > 0 ||
@@ -214,13 +207,6 @@ class RoomDetailsPresenter(
                     }
                 }
                 is RoomDetailsEvent.SetFavorite -> scope.setFavorite(event.isFavorite)
-                is RoomDetailsEvent.SetDirectoryPublished -> {
-                    scope.launch(dispatchers.io) {
-                        room.updateRoomVisibility(if (event.published) RoomVisibility.Public else RoomVisibility.Private)
-                            .onSuccess { directoryPublished = event.published }
-                            .onFailure { Timber.e(it, "Failed to update room directory publication") }
-                    }
-                }
                 is RoomDetailsEvent.CopyToClipboard -> {
                     clipboardHelper.copyPlainText(event.text) {
                         snackbarDispatcher.post(SnackbarMessage(CommonStrings.common_copied_to_clipboard))
@@ -267,8 +253,6 @@ class RoomDetailsPresenter(
             isFavorite = isFavorite,
             displayRolesAndPermissionsSettings = !isDm && permissions.canEditRolesAndPermissions,
             isPublic = joinRule == JoinRule.Public,
-            directoryPublished = directoryPublished,
-            canManageDirectory = !isDm && joinRule == JoinRule.Public && permissions.canEditRolesAndPermissions,
             heroes = roomInfo.heroes,
             pinnedMessagesCount = pinnedMessagesCount,
             snackbarMessage = snackbarMessage,
