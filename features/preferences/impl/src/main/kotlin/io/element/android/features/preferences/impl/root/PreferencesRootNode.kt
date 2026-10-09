@@ -71,7 +71,9 @@ class PreferencesRootNode(
             emojiPickerRenderer = emojiPickerRenderer,
             modifier = modifier,
             onBackClick = this::navigateUp,
-            onAddAccountClick = callback::navigateToAddAccount,
+            onAddAccountClick = {
+                if (state.otherSessions.size + 1 < 3) callback.navigateToAddAccount()
+            },
             onOpenAnalytics = callback::navigateToAnalyticsSettings,
             onOpenAbout = callback::navigateToAbout,
             onOpenDeveloperSettings = callback::navigateToDeveloperSettings,
