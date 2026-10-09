@@ -12,6 +12,7 @@ import android.content.Context
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
@@ -109,6 +110,21 @@ class RoomListPresenter(
     @Composable
     override fun present(): RoomListState {
         val coroutineScope = rememberCoroutineScope()
+        // Heartbeat only for the foreground account, never in the login/sync pipeline.
+        var listVisible by remember { mutableStateOf(false) }
+        LifecycleResumeEffect(client.sessionId) {
+            listVisible = true
+            onPauseOrDispose { listVisible = false }
+        }
+        LaunchedEffect(client.sessionId, listVisible) {
+            if (listVisible) {
+                while (true) {
+                    client.announceOnline()
+                    delay(20_000)
+                }
+            }
+        }
+
         val leaveRoomState = leaveRoomPresenter.present()
         val filtersState = filtersPresenter.present()
         val searchState = searchPresenter.present()
