@@ -8,6 +8,7 @@ on:
       - syncme-178-from-176
       - syncme-180-event-presence-20261010
       - syncme-217-startup-diagnostics-from-209
+      - syncme-220-diagnostics-export-fix
     paths:
       - '.github/syncme-release-trigger.txt'
 
