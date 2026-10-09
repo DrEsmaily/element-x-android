@@ -272,6 +272,7 @@ class RustMatrixClient(
                 URLEncoder.encode(userId.value, "UTF-8") + "/status"
             val connection = URL(url).openConnection() as HttpURLConnection
             try {
+                connection.instanceFollowRedirects = false
                 connection.requestMethod = "GET"
                 connection.connectTimeout = 4_000
                 connection.readTimeout = 4_000
