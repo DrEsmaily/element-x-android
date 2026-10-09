@@ -113,6 +113,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.buffer
@@ -249,7 +250,7 @@ class RustMatrixClient(
                 }
             }.getOrDefault(UserPresence.Unknown)
             if (result !is UserPresence.Unknown) {
-                mutablePresenceStates.value = mutablePresenceStates.value + (userId.value to result)
+                mutablePresenceStates.update { old -> old + (userId.value to result) }
             }
             result
         }
