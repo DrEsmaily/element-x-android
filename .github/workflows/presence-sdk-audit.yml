@@ -29,14 +29,12 @@ jobs:
           gradle.beforeProject { p ->
             if (p.path == ":libraries:matrix:impl") p.tasks.register("fetchPinnedMatrixAar") {
               doLast {
-                def config = p.configurations.getByName("releaseRuntimeClasspath")
-                def artifact = config.resolvedConfiguration.resolvedArtifacts.find {
-                  it.moduleVersion.id.group == "org.matrix.rustcomponents" &&
-                  it.name == "sdk-android"
-                }
-                if (artifact == null) throw new GradleException("Pinned Matrix SDK AAR not resolved")
-                println("PINNED_AAR=" + artifact.file.absolutePath)
-                new File("/tmp/sdk-aar-path.txt").text = artifact.file.absolutePath
+                def dependency = p.dependencies.create("org.matrix.rustcomponents:sdk-android:26.10.05-nightly@aar")
+                def isolated = p.configurations.detachedConfiguration(dependency)
+                isolated.transitive = false
+                def artifact = isolated.resolve().first()
+                println("PINNED_AAR=" + artifact.absolutePath)
+                new File("/tmp/sdk-aar-path.txt").text = artifact.absolutePath
               }
             }
           }
