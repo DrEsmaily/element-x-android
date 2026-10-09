@@ -244,9 +244,11 @@ class RustMatrixClient(
 
 
     init {
-        isAppForeground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-        ProcessLifecycleOwner.get().lifecycle.addObserver(processPresenceObserver)
         sessionCoroutineScope.launch {
+            // LifecycleRegistry requires observer changes on the Android main thread.
+            val processLifecycle = ProcessLifecycleOwner.get().lifecycle
+            isAppForeground = processLifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+            processLifecycle.addObserver(processPresenceObserver)
             sessionStore.sessionIdFlow().collect { selectedId ->
                 sendOwnPresence(ownPresenceMode, isAppForeground && selectedId == sessionId.value)
             }
@@ -815,7 +817,9 @@ class RustMatrixClient(
     }
 
     internal suspend fun destroy() {
-        ProcessLifecycleOwner.get().lifecycle.removeObserver(processPresenceObserver)
+        withContext(kotlinx.coroutines.Dispatchers.Main.immediate) {
+            ProcessLifecycleOwner.get().lifecycle.removeObserver(processPresenceObserver)
+        }
         innerNotificationClient.close()
 
         roomFactory.destroy()
