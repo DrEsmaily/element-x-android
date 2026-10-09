@@ -144,6 +144,13 @@ import org.matrix.rustcomponents.sdk.TaskHandle
 import org.matrix.rustcomponents.sdk.UserProfile
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
+import io.element.android.libraries.matrix.api.user.UserPresence
+import io.element.android.libraries.matrix.api.user.OwnPresenceMode
+import org.matrix.rustcomponents.sdk.PresenceState
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
 import java.io.File
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicBoolean
@@ -209,6 +216,58 @@ class RustMatrixClient(
     private val innerSpaceService = runBlocking { innerClient.spaceService() }
 
     override val roomMembershipObserver = RoomMembershipObserver()
+
+    override suspend fun getPresence(userId: UserId): UserPresence = withContext(sessionDispatcher) {
+        // Only query when asked by visible UI. Never log access tokens or guess status.
+        runCatching {
+            val url = homeserverUrl.trimEnd('/') +
+                "/_matrix/client/v3/presence/" +
+                URLEncoder.encode(userId.value, "UTF-8") + "/status"
+            val connection = URL(url).openConnection() as HttpURLConnection
+            try {
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 4_000
+                connection.readTimeout = 4_000
+                connection.setRequestProperty("Authorization", "Bearer " + innerClient.session().accessToken)
+                connection.setRequestProperty("Accept", "application/json")
+                if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                    UserPresence.Unknown
+                } else {
+                    val raw = connection.inputStream.bufferedReader().use { it.readText() }
+                    val response = JSONObject(raw)
+                    when (response.optString("presence")) {
+                        "online" -> UserPresence.Online
+                        "unavailable" -> UserPresence.Unavailable
+                        "offline" -> {
+                            val elapsed = if (response.has("last_active_ago") && !response.isNull("last_active_ago")) {
+                                response.optLong("last_active_ago", -1L).takeIf { it >= 0 }
+                            } else null
+                            val timestamp = elapsed?.let { System.currentTimeMillis() - it }
+                                ?.takeIf { it > 0 }
+                            UserPresence.Offline(timestamp)
+                        }
+                        else -> UserPresence.Unknown
+                    }
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }.getOrDefault(UserPresence.Unknown)
+    }
+
+    override suspend fun setOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> =
+        withContext(sessionDispatcher) {
+            runCatchingExceptions {
+                // The selected value is retained for future SDK-generated sync requests.
+                // Keeping the sync service running preserves messages and notifications.
+                val state = when {
+                    mode == OwnPresenceMode.APPEAR_OFFLINE -> PresenceState.OFFLINE
+                    active -> PresenceState.ONLINE
+                    else -> PresenceState.UNAVAILABLE
+                }
+                innerClient.setPresence(state, true)
+            }
+        }
 
     override val syncService = RustSyncService(
         inner = innerSyncService,
