@@ -195,41 +195,37 @@ class MainActivity : NodeActivity() {
     }
 
     private fun exportStartupTrace() {
-        StartupTrace.mark("export_requested")
+        StartupTrace.mark("report_view_requested")
         lifecycleScope.launch {
-            val exportResult = withContext(Dispatchers.IO) {
+            val report = withContext(Dispatchers.IO) {
+                kotlinx.coroutines.delay(180)
                 runCatching {
-                    val source = File(filesDir, "syncme-startup-trace.txt")
-                    // Startup logging uses an async writer. Give the export marker a chance to flush.
-                    kotlinx.coroutines.delay(150)
-                    check(source.isFile) { "Diagnostic report is not available yet" }
-                    val output = File(cacheDir, "syncme-startup-diagnostics.txt")
-                    source.copyTo(output, overwrite = true)
-                    output
-                }
+                    File(filesDir, "syncme-startup-trace.txt").takeIf { it.isFile }?.readText()
+                        ?: "No startup diagnostics have been recorded yet."
+                }.getOrElse { "Unable to read diagnostics: " + it.javaClass.simpleName }
             }
-            exportResult.onSuccess { output ->
-                runCatching {
-                    // The existing cache root is already declared in FileProvider and works
-                    // with this release's applicationIdSuffix.
-                    val uri = FileProvider.getUriForFile(this@MainActivity, "$packageName.fileprovider", output)
-                    val send = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_STREAM, uri)
-                        clipData = ClipData.newRawUri("SyncMe startup diagnostics", uri)
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    startActivity(Intent.createChooser(send, "Share SyncMe startup diagnostics"))
-                }.onFailure { error ->
-                    StartupTrace.mark("export_share_failed_" + error.javaClass.simpleName)
-                    Timber.tag(loggerTag.value).e(error, "Startup diagnostics sharing failed")
-                    Toast.makeText(this@MainActivity, "Cannot share diagnostics. Try again.", Toast.LENGTH_LONG).show()
-                }
-            }.onFailure { error ->
-                StartupTrace.mark("export_copy_failed_" + error.javaClass.simpleName)
-                Timber.tag(loggerTag.value).e(error, "Startup diagnostics export failed")
-                Toast.makeText(this@MainActivity, "Cannot prepare diagnostics report.", Toast.LENGTH_LONG).show()
+            // Native dialog is independent of Compose navigation and file sharing providers.
+            val textView = android.widget.TextView(this@MainActivity).apply {
+                text = report
+                textSize = 12f
+                setTextIsSelectable(true)
+                setPadding(24, 16, 24, 16)
+                typeface = android.graphics.Typeface.MONOSPACE
             }
+            val scroll = android.widget.ScrollView(this@MainActivity).apply {
+                addView(textView)
+            }
+            android.app.AlertDialog.Builder(this@MainActivity)
+                .setTitle("SyncMe startup diagnostics")
+                .setView(scroll)
+                .setPositiveButton("Copy All") { _, _ ->
+                    val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("SyncMe diagnostics", report))
+                    Toast.makeText(this@MainActivity, "Diagnostics copied", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Close", null)
+                .show()
         }
     }
 
