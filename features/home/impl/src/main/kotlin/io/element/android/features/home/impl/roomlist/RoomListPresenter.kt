@@ -310,7 +310,7 @@ class RoomListPresenter(
         // the room list is composed, and never treat a failed lookup as online.
         val userIds = roomSummaries.dataOrNull().orEmpty()
             .filter { it.isDm && !it.isSpace }
-            .mapNotNull { it.heroes.firstOrNull()?.id?.takeIf { id -> id.startsWith("@") } }
+            .mapNotNull { it.dmUserId?.takeIf { id -> id.startsWith("@") } }
             .distinct()
             .take(30)
         var userPresence by remember(client.sessionId.value) {
@@ -361,7 +361,7 @@ class RoomListPresenter(
                     batteryOptimizationState = batteryOptimizationPresenter.present(),
                     summaries = roomSummaries.dataOrNull().orEmpty().map { summary ->
                         summary.copy(
-                            isOnline = summary.isDm && userPresence[summary.heroes.firstOrNull()?.id] is UserPresence.Online
+                            isOnline = summary.isDm && userPresence[summary.dmUserId] is UserPresence.Online
                         )
                     }.toImmutableList(),
                     showAllActivity = showAllActivity,
