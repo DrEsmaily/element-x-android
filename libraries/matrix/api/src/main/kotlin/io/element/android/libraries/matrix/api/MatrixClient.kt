@@ -94,6 +94,9 @@ interface MatrixClient : ClientUrlContentFetcher {
     /** Track DM users without per-screen polling; snapshots load once, changes arrive through Matrix sync. */
     fun trackPresence(userIds: Set<UserId>) = Unit
 
+    /** Publish own activity only after sync and only for currently selected account. */
+    suspend fun announceOnline(): Unit = Unit
+
     /** Handles verifying this session against the user's other devices or their recovery key. */
     val sessionVerificationService: SessionVerificationService
 
