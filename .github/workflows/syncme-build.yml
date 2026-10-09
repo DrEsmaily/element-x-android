@@ -10,6 +10,7 @@ on:
       - syncme-217-startup-diagnostics-from-209
       - syncme-220-diagnostics-export-fix
       - syncme-221-diagnostics-text-view
+      - syncme-222-deep-startup-diagnostics
     paths:
       - '.github/syncme-release-trigger.txt'
 
