@@ -34,3 +34,5 @@ Build 176: Switch accounts header matches standard preference section, no divide
 SyncMe 178: based on successful 176, account/banner fixes and public directory creation/admin controls.
 
 SyncMe 179: resolve Kotlin delegate and Timber imports found by release 178 compilation.
+
+SyncMe next release: remove only custom duplicate directory controls; preserve directory loading and search fixes.
