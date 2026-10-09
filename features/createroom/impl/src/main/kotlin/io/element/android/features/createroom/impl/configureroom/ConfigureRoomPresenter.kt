@@ -192,6 +192,7 @@ class ConfigureRoomPresenter(
             when (event) {
                 is ConfigureRoomEvent.RoomNameChanged -> dataStore.setRoomName(event.name)
                 is ConfigureRoomEvent.TopicChanged -> dataStore.setTopic(event.topic)
+                is ConfigureRoomEvent.PublishInDirectoryChanged -> dataStore.setPublishInDirectory(event.enabled)
                 is ConfigureRoomEvent.JoinRuleChanged -> dataStore.setJoinRule(event.joinRuleItem)
                 is ConfigureRoomEvent.RoomAddressChanged -> dataStore.setRoomAddress(event.roomAddress)
                 is ConfigureRoomEvent.CreateRoom -> createRoom(createRoomConfig)
@@ -243,7 +244,7 @@ class ConfigureRoomPresenter(
                         topic = config.topic,
                         isEncrypted = false,
                         isDirect = false,
-                        visibility = RoomVisibility.Public,
+                        visibility = if (config.publishInDirectory) RoomVisibility.Public else RoomVisibility.Private,
                         joinRuleOverride = config.visibilityState.joinRuleItem.toJoinRule()
                             // No need to specify the public join rule override, since the preset is already PUBLIC_CHAT
                             .takeIf { it != JoinRule.Public },
