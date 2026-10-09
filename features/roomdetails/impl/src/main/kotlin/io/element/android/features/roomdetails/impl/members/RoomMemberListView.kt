@@ -12,6 +12,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -23,6 +24,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -104,6 +107,7 @@ fun RoomMemberListView(
             )
             RoomMemberList(
                 roomMembersData = state.filteredRoomMembers,
+                onlineUserIds = state.onlineUserIds,
                 selectedSection = state.selectedSection,
                 showBannedSection = state.showBannedSection,
                 searchQuery = state.searchQuery.text.toString(),
@@ -117,6 +121,7 @@ fun RoomMemberListView(
 @Composable
 private fun RoomMemberList(
     roomMembersData: AsyncData<RoomMembers>,
+    onlineUserIds: Set<String>,
     selectedSection: SelectedSection,
     showBannedSection: Boolean,
     searchQuery: String,
@@ -167,6 +172,7 @@ private fun RoomMemberList(
                 } else {
                     memberItems(
                         roomMembers = roomMembers,
+                        onlineUserIds = onlineUserIds,
                         selectedSection = selectedSection,
                         onSelectUser = onSelectUser,
                     )
@@ -179,6 +185,7 @@ private fun RoomMemberList(
 
 private fun LazyListScope.memberItems(
     roomMembers: RoomMembers,
+    onlineUserIds: Set<String>,
     selectedSection: SelectedSection,
     onSelectUser: (RoomMember) -> Unit,
 ) {
@@ -193,6 +200,7 @@ private fun LazyListScope.memberItems(
                 )
                 roomMemberListSectionItems(
                     members = roomMembers.invited,
+                    onlineUserIds = onlineUserIds,
                     onMemberSelected = { onSelectUser(it) }
                 )
             }
@@ -205,6 +213,7 @@ private fun LazyListScope.memberItems(
                 )
                 roomMemberListSectionItems(
                     members = roomMembers.joined,
+                    onlineUserIds = onlineUserIds,
                     onMemberSelected = { onSelectUser(it) }
                 )
             }
@@ -220,6 +229,7 @@ private fun LazyListScope.memberItems(
                 )
                 roomMemberListSectionItems(
                     members = roomMembers.banned,
+                    onlineUserIds = onlineUserIds,
                     onMemberSelected = { onSelectUser(it) }
                 )
             }
@@ -257,12 +267,14 @@ private fun LazyListScope.roomMemberListSectionHeader(
 
 private fun LazyListScope.roomMemberListSectionItems(
     members: ImmutableList<RoomMemberWithIdentityState>?,
+    onlineUserIds: Set<String>,
     onMemberSelected: (RoomMember) -> Unit,
 ) {
     items(members.orEmpty()) { matrixUser ->
         RoomMemberListItem(
             modifier = Modifier.fillMaxWidth(),
             roomMemberWithIdentity = matrixUser,
+            isOnline = matrixUser.roomMember.userId.value in onlineUserIds,
             onClick = { onMemberSelected(matrixUser.roomMember) }
         )
     }
@@ -287,6 +299,7 @@ private fun LazyListScope.emptySearchItem(searchQuery: String) {
 @Composable
 private fun RoomMemberListItem(
     roomMemberWithIdentity: RoomMemberWithIdentityState,
+    isOnline: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -307,6 +320,9 @@ private fun RoomMemberListItem(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                if (isOnline) {
+                    Box(modifier = Modifier.size(9.dp).background(Color(0xFF2BCB74), CircleShape))
+                }
                 when (roomMemberWithIdentity.identityState) {
                     IdentityState.Verified -> {
                         Icon(
