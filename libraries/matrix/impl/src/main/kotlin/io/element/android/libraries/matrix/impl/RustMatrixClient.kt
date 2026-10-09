@@ -203,6 +203,7 @@ class RustMatrixClient(
     override val homeserverUrl: String = innerClient.homeserver()
     override val sessionCoroutineScope = appCoroutineScope.childScope(dispatchers.main, "Session-$sessionId")
     private val sessionDispatcher = dispatchers.io.limitedParallelism(64)
+    private val presenceNetworkDispatcher = dispatchers.io.limitedParallelism(2)
     private val ownPresenceFile = File(sessionPaths.fileDirectory, "syncme-presence-mode")
     @Volatile private var ownPresenceMode = runCatching {
         if (ownPresenceFile.readText().trim() == "offline") OwnPresenceMode.APPEAR_OFFLINE
@@ -238,7 +239,7 @@ class RustMatrixClient(
 
     override val roomMembershipObserver = RoomMembershipObserver()
 
-    override suspend fun getPresence(userId: UserId): UserPresence = withContext(sessionDispatcher) {
+    override suspend fun getPresence(userId: UserId): UserPresence = withContext(presenceNetworkDispatcher) {
         if (syncService.syncState.value != io.element.android.libraries.matrix.api.sync.SyncState.Running) {
             return@withContext UserPresence.Unknown
         }
@@ -251,8 +252,8 @@ class RustMatrixClient(
             try {
                 connection.instanceFollowRedirects = false
                 connection.requestMethod = "GET"
-                connection.connectTimeout = 4_000
-                connection.readTimeout = 4_000
+                connection.connectTimeout = 2_000
+                connection.readTimeout = 2_000
                 connection.setRequestProperty("Authorization", "Bearer " + innerClient.session().accessToken)
                 connection.setRequestProperty("Accept", "application/json")
                 if (connection.responseCode != HttpURLConnection.HTTP_OK) {
