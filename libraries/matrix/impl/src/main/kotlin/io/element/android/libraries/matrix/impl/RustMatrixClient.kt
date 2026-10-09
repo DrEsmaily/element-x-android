@@ -146,11 +146,6 @@ import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import io.element.android.libraries.matrix.api.user.UserPresence
 import io.element.android.libraries.matrix.api.user.OwnPresenceMode
-import io.element.android.libraries.sessionstorage.api.sessionIdFlow
-import kotlinx.coroutines.flow.collect
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.ProcessLifecycleOwner
 import org.matrix.rustcomponents.sdk.PresenceState
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -214,20 +209,6 @@ class RustMatrixClient(
         else OwnPresenceMode.SHOW_ACTIVITY
     }.getOrDefault(OwnPresenceMode.SHOW_ACTIVITY)
 
-    @Volatile private var isAppForeground = false
-    private val processPresenceObserver = LifecycleEventObserver { _, event ->
-        when (event) {
-            Lifecycle.Event.ON_START, Lifecycle.Event.ON_STOP -> {
-                isAppForeground = event == Lifecycle.Event.ON_START
-                sessionCoroutineScope.launch {
-                    val isSelectedSession = sessionStore.getLatestSession()?.userId == sessionId.value
-                    sendOwnPresence(ownPresenceMode, isAppForeground && isSelectedSession)
-                }
-            }
-            else -> Unit
-        }
-    }
-    
     private suspend fun sendOwnPresence(mode: OwnPresenceMode, active: Boolean): Result<Unit> =
         withContext(sessionDispatcher) {
             runCatchingExceptions {
@@ -243,15 +224,8 @@ class RustMatrixClient(
 
 
     init {
-        sessionCoroutineScope.launch {
-            // LifecycleRegistry requires observer changes on the Android main thread.
-            val processLifecycle = ProcessLifecycleOwner.get().lifecycle
-            isAppForeground = processLifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-            processLifecycle.addObserver(processPresenceObserver)
-            sessionStore.sessionIdFlow().collect { selectedId ->
-                sendOwnPresence(ownPresenceMode, isAppForeground && selectedId == sessionId.value)
-            }
-        }
+        // Presence is NEVER changed during login or client initialization.
+        // Startup must remain independent from the optional presence feature.
         // Matrix Rust SDK disables intermediate send-queue media upload progress by default.
         // SyncMe needs the actual in-flight values so the UI can render 0..100% in real time.
         innerClient.enableSendQueueUploadProgress(true)
@@ -818,8 +792,7 @@ class RustMatrixClient(
 
     internal suspend fun destroy() {
         withContext(kotlinx.coroutines.Dispatchers.Main.immediate) {
-            ProcessLifecycleOwner.get().lifecycle.removeObserver(processPresenceObserver)
-        }
+            }
         innerNotificationClient.close()
 
         roomFactory.destroy()
