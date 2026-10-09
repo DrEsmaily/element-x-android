@@ -57,6 +57,7 @@ import io.element.android.libraries.matrix.api.spaces.SpaceService
 import io.element.android.libraries.matrix.api.sync.SlidingSyncVersion
 import io.element.android.libraries.matrix.api.sync.SyncState
 import io.element.android.libraries.matrix.api.user.MatrixSearchUserResults
+import io.element.android.libraries.matrix.api.user.UserPresence
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.api.user.UserStatus
 import io.element.android.libraries.matrix.impl.encryption.RustEncryptionService
@@ -108,6 +109,9 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
@@ -145,6 +149,11 @@ import org.matrix.rustcomponents.sdk.UserProfile
 import org.matrix.rustcomponents.sdk.use
 import timber.log.Timber
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
+import java.net.URLEncoder
+import org.json.JSONObject
+import java.util.concurrent.ConcurrentHashMap
 import java.util.Optional
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.encoding.Base64
@@ -207,6 +216,117 @@ class RustMatrixClient(
 
     // TODO refactor this and `innerNotificationClient` to be behind a suspend function instead
     private val innerSpaceService = runBlocking { innerClient.spaceService() }
+
+
+    // One observer per signed-in Matrix session, not per chat row or open screen.
+    // The server's Matrix /sync long-poll delivers m.presence events as they occur.
+    private val trackedPresenceUsers = ConcurrentHashMap.newKeySet<UserId>()
+    private val mutablePresenceStates = MutableStateFlow<Map<UserId, UserPresence>>(emptyMap())
+    override val presenceStates: StateFlow<Map<UserId, UserPresence>> = mutablePresenceStates
+    private val presenceIo = dispatchers.io.limitedParallelism(4)
+    private val presenceObserverStarted = AtomicBoolean(false)
+
+    override fun trackPresence(userIds: Set<UserId>) {
+        userIds.filter { it != sessionId }.forEach { user ->
+            if (trackedPresenceUsers.add(user)) {
+                // Exactly one initial snapshot for each new user; subsequent changes are push events.
+                sessionCoroutineScope.launch(presenceIo) {
+                    val status = fetchPresenceSnapshot(user)
+                    if (status != UserPresence.Unknown && trackedPresenceUsers.contains(user)) {
+                        mutablePresenceStates.value = mutablePresenceStates.value + (user to status)
+                    }
+                }
+            }
+        }
+        if (presenceObserverStarted.compareAndSet(false, true)) {
+            sessionCoroutineScope.launch(presenceIo) {
+                syncService.syncState.collectLatest { syncState ->
+                    if (syncState == SyncState.Running) {
+                        collectPresenceEvents()
+                    } else {
+                        // Never keep green indicators when this session has stopped syncing.
+                        mutablePresenceStates.value = emptyMap()
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun fetchPresenceSnapshot(user: UserId): UserPresence =
+        withContext(presenceIo) {
+            runCatching {
+                val session = sessionStore.getSession(sessionId.value) ?: return@withContext UserPresence.Unknown
+                val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/presence/" +
+                    URLEncoder.encode(user.value, "UTF-8") + "/status"
+                val connection = URL(url).openConnection() as HttpURLConnection
+                try {
+                    connection.connectTimeout = 4000
+                    connection.readTimeout = 4000
+                    connection.setRequestProperty("Authorization", "Bearer " + session.accessToken)
+                    if (connection.responseCode == 200) {
+                        presenceFromJson(JSONObject(connection.inputStream.bufferedReader().use { it.readText() }))
+                    } else UserPresence.Unknown
+                } finally {
+                    connection.disconnect()
+                }
+            }.getOrDefault(UserPresence.Unknown)
+        }
+
+    private fun presenceFromJson(content: JSONObject): UserPresence = when (content.optString("presence")) {
+        "online" -> UserPresence.Online
+        "unavailable" -> UserPresence.Away
+        "offline" -> {
+            val elapsed = content.optLong("last_active_ago", -1L)
+            UserPresence.Offline(if (elapsed >= 0) System.currentTimeMillis() - elapsed else null)
+        }
+        else -> UserPresence.Unknown
+    }
+
+    private suspend fun collectPresenceEvents() = withContext(presenceIo) {
+        var since: String? = null
+        var failures = 0
+        // Presence-only long polling, with no polling interval and no room timeline downloads.
+        val filter = URLEncoder.encode(
+            """{"room":{"rooms":[],"timeline":{"limit":0}},"presence":{"types":["m.presence"]}}""",
+            "UTF-8"
+        )
+        while (kotlin.coroutines.coroutineContext.isActive) {
+            val session = sessionStore.getSession(sessionId.value) ?: break
+            val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=30000" +
+                "&filter=" + filter + (since?.let { "&since=" + URLEncoder.encode(it, "UTF-8") } ?: "")
+            var connection: HttpURLConnection? = null
+            try {
+                connection = URL(url).openConnection() as HttpURLConnection
+                connection.connectTimeout = 5000
+                connection.readTimeout = 40000
+                connection.setRequestProperty("Authorization", "Bearer " + session.accessToken)
+                if (connection.responseCode != 200) error("Presence sync HTTP " + connection.responseCode)
+                val payload = JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                since = payload.optString("next_batch").takeIf { it.isNotBlank() } ?: since
+                failures = 0
+                val events = payload.optJSONObject("presence")?.optJSONArray("events") ?: continue
+                val updates = mutableMapOf<UserId, UserPresence>()
+                for (index in 0 until events.length()) {
+                    val event = events.optJSONObject(index) ?: continue
+                    if (event.optString("type") != "m.presence") continue
+                    val sender = UserId(event.optString("sender"))
+                    if (!trackedPresenceUsers.contains(sender)) continue
+                    val next = presenceFromJson(event.optJSONObject("content") ?: continue)
+                    if (next != UserPresence.Unknown) updates[sender] = next
+                }
+                if (updates.isNotEmpty()) mutablePresenceStates.value = mutablePresenceStates.value + updates
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                // Avoid false online during network/server failures.
+                mutablePresenceStates.value = emptyMap()
+                failures = (failures + 1).coerceAtMost(5)
+                delay((1000L shl failures).coerceAtMost(30000L))
+            } finally {
+                connection?.disconnect()
+            }
+        }
+    }
 
     override val roomMembershipObserver = RoomMembershipObserver()
 
