@@ -13,6 +13,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,6 +33,7 @@ import io.element.android.libraries.featureflag.api.FeatureFlags
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.matrix.api.user.OwnPresenceMode
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.sessionstorage.api.SessionStore
 import io.element.android.services.analytics.api.AnalyticsService
@@ -58,6 +61,11 @@ class PreferencesRootPresenter(
     @Composable
     override fun present(): PreferencesRootState {
         val coroutineScope = rememberCoroutineScope()
+        var appearOffline by remember(matrixClient.sessionId) { mutableStateOf(false) }
+        LaunchedEffect(matrixClient.sessionId) {
+            appearOffline = matrixClient.isAppearingOffline()
+        }
+
         val matrixUser = matrixClient.userProfile.collectAsState()
         LaunchedEffect(Unit) {
             // Force a refresh of the profile
@@ -134,6 +142,13 @@ class PreferencesRootPresenter(
                 PreferencesRootEvent.ToggleOtherAccountsExpanded -> coroutineScope.launch {
                     appPreferencesStore.setOtherAccountsExpanded(!isOtherAccountsSectionExpanded)
                 }
+                is PreferencesRootEvent.SetAppearOffline -> coroutineScope.launch {
+                    val mode = if (event.enabled) OwnPresenceMode.APPEAR_OFFLINE else OwnPresenceMode.SHOW_ACTIVITY
+                    val result = matrixClient.setOwnPresence(mode, active = true)
+                    if (result.isSuccess) {
+                        appearOffline = event.enabled
+                    }
+                }
                 is PreferencesRootEvent.SetTheme -> sessionCoroutineScope.launch {
                     when (event.theme) {
                         ThemeOption.System -> appPreferencesStore.setTheme(Theme.System.name)
@@ -160,6 +175,7 @@ class PreferencesRootPresenter(
             showLabsItem = showLabsItem,
             snackbarMessage = snackbarMessage,
             eventSink = ::handleEvent,
+            appearOffline = appearOffline,
         )
     }
 }
