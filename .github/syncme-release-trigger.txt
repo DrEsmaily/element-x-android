@@ -50,3 +50,5 @@ Diagnostics report export corrected using cache FileProvider.
 
 Diagnostics text viewer / copy all release.\n
 Deep startup trace: complete stacks, window first draw and focus.
+
+Bounded diagnostics: latest 10 runs with 256KB cap each.\n
