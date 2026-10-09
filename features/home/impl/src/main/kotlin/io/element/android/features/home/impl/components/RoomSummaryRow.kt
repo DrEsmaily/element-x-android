@@ -8,6 +8,8 @@
 
 package io.element.android.features.home.impl.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -198,7 +200,8 @@ private fun RoomSummaryScaffoldRow(
             .padding(horizontal = 16.dp, vertical = 11.dp)
             .height(IntrinsicSize.Min),
     ) {
-        Avatar(
+        Box {
+            Avatar(
             avatarData = room.avatarData,
             avatarType = if (room.isSpace) {
                 AvatarType.Space(isTombstoned = room.isTombstoned)
@@ -209,7 +212,12 @@ private fun RoomSummaryScaffoldRow(
                 )
             },
             hideImage = hideAvatarImage,
-        )
+            )
+            if (room.isDm && room.syncmeOnline && !hideAvatarImage) {
+                Box(modifier = Modifier.align(Alignment.BottomEnd).size(10.dp)
+                    .background(Color(0xFF2BCB74), CircleShape))
+            }
+        }
         Spacer(modifier = Modifier.width(16.dp))
         Column(
             modifier = Modifier.fillMaxWidth(),
