@@ -226,6 +226,24 @@ class MessagesPresenter(
 
         val membersState by room.membersStateFlow.collectAsState()
         val dmRoomMember by room.getDirectRoomMember(membersState)
+        var onlineChatVisible by remember { mutableStateOf(false) }
+        LifecycleResumeEffect(matrixClient.sessionId) {
+            onlineChatVisible = true
+            onPauseOrDispose { onlineChatVisible = false }
+        }
+        LaunchedEffect(matrixClient.sessionId, onlineChatVisible) {
+            if (onlineChatVisible) {
+                matrixClient.syncService.syncState.collectLatest { state ->
+                    if (state == io.element.android.libraries.matrix.api.sync.SyncState.Running) {
+                        while (true) {
+                            matrixClient.announceOnline()
+                            delay(30_000)
+                        }
+                    }
+                }
+            }
+        }
+
         // One shared session-scoped presence stream; no foreground heartbeat or status polling.
         val presenceStates by matrixClient.presenceStates.collectAsState()
         LaunchedEffect(dmRoomMember?.userId) {
