@@ -41,3 +41,4 @@ SyncMe clean presence: on-demand get + selected foreground heartbeat + UI + pres
 Fix delayed presence: immediate heartbeat on SyncState.Running, no page navigation offline.
 Fix failed PresenceTest Kotlin test imports using project JUnit; rerun APK and unit tests.
 Retry full APK build and JUnit presence tests after fixing test imports.
+Audit exact Rust SDK 26.10.05-nightly binary for presence listeners and Kotlin APIs before making app changes.
