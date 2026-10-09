@@ -86,6 +86,9 @@ interface MatrixClient : ClientUrlContentFetcher {
     /** Controls the sync loop of this session and exposes its state. */
     val syncService: SyncService
 
+    /** True only when the homeserver explicitly reports this user online. */
+    suspend fun isUserOnline(userId: UserId): Boolean = false
+
     /** Handles verifying this session against the user's other devices or their recovery key. */
     val sessionVerificationService: SessionVerificationService
 
