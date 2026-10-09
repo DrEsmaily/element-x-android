@@ -39,3 +39,4 @@ SyncMe next release: remove only custom duplicate directory controls; preserve d
 Clean SyncMe read-only presence from Build 180: initial compile and stability test.
 SyncMe clean presence: on-demand get + selected foreground heartbeat + UI + presence tests; final build.
 Fix delayed presence: immediate heartbeat on SyncState.Running, no page navigation offline.
+Fix failed PresenceTest Kotlin test imports using project JUnit; rerun APK and unit tests.
