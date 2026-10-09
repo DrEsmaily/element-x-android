@@ -7,6 +7,7 @@ on:
       - syncme-164-tags-pages
       - syncme-178-from-176
       - syncme-199-presence-clean-180
+      - syncme-204-presence-central
     paths:
       - '.github/syncme-release-trigger.txt'
 
