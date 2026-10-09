@@ -150,8 +150,8 @@ class RoomDetailsPresenter(
                 val members = membersState.roomMembers().orEmpty().filter {
                     it.membership == RoomMembershipState.JOIN
                 }
-                if (members.size in 1..30 && members.size.toLong() == joinedMemberCount) {
-                    val limiter = Semaphore(5)
+                if (members.size in 1..12 && members.size.toLong() == joinedMemberCount) {
+                    val limiter = Semaphore(2)
                     while (true) {
                         val states = coroutineScope {
                             members.map { member ->
