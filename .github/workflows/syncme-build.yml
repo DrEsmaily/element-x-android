@@ -7,6 +7,7 @@ on:
       - syncme-164-tags-pages
       - syncme-178-from-176
       - syncme-187-presence-clean-from-180
+      - syncme-197-presence-logic-fix
     paths:
       - '.github/syncme-release-trigger.txt'
 
@@ -75,7 +76,7 @@ jobs:
           grep -F 'override suspend fun getPresence' "$file"
           grep -F 'override suspend fun setOwnPresence' "$file"
       - name: Test SyncMe presence rules
-        if: github.ref_name == 'syncme-187-presence-clean-from-180'
+        if: github.ref_name == 'syncme-197-presence-logic-fix'
         run: ./gradlew :libraries:matrix:api:testDebugUnitTest --tests '*UserPresenceTest' $CI_GRADLE_ARG_PROPERTIES
 
       - name: Generate full per-build continuation TXT
