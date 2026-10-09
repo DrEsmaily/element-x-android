@@ -380,7 +380,7 @@ private fun ColumnScope.GeneralSection(
     )
     val context = LocalContext.current
     ListItem(
-        content = { Text("Export startup diagnostics") },
+        content = { Text("View startup diagnostics") },
         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Info())),
         onClick = {
             context.startActivity(Intent("io.syncme.EXPORT_STARTUP_TRACE").apply {
