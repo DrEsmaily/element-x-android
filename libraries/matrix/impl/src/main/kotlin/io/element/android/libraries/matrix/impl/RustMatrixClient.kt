@@ -59,6 +59,7 @@ import io.element.android.libraries.matrix.api.sync.SlidingSyncVersion
 import io.element.android.libraries.matrix.api.sync.SyncState
 import io.element.android.libraries.matrix.api.user.MatrixSearchUserResults
 import io.element.android.libraries.matrix.api.user.UserPresence
+import io.element.android.libraries.matrix.api.user.SyncMeAppVisibility
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.api.user.UserStatus
 import io.element.android.libraries.matrix.impl.encryption.RustEncryptionService
@@ -228,6 +229,7 @@ class RustMatrixClient(
     override val presenceStates: StateFlow<Map<UserId, UserPresence>> = mutablePresenceStates
     private val presenceIo = dispatchers.io.limitedParallelism(4)
     private val presenceObserverStarted = AtomicBoolean(false)
+    private val visibilityObserverStarted = AtomicBoolean(false)
     private val presenceRefreshSlots = kotlinx.coroutines.sync.Semaphore(2)
 
     override fun trackPresence(userIds: Set<UserId>) {
@@ -242,6 +244,16 @@ class RustMatrixClient(
                             if (user in current) current else current + (user to status)
                         }
                     }
+                }
+            }
+        }
+        if (visibilityObserverStarted.compareAndSet(false, true)) {
+            sessionCoroutineScope.launch(presenceIo) {
+                SyncMeAppVisibility.isForeground.collectLatest { foreground ->
+                    if (foreground == null) return@collectLatest
+                    // A brief transition during an Activity switch must not cause a false Away.
+                    if (!foreground) delay(500L)
+                    publishOwnPresence(if (foreground) "online" else "unavailable")
                 }
             }
         }
@@ -283,6 +295,33 @@ class RustMatrixClient(
             }
         }
     }
+    private suspend fun publishOwnPresence(value: String) {
+        withContext(presenceIo) {
+            runCatching {
+                val session = sessionStore.getSession(sessionId.value) ?: return@withContext
+                val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/presence/" +
+                    URLEncoder.encode(sessionId.value, "UTF-8") + "/status"
+                val conn = URL(url).openConnection() as HttpURLConnection
+                try {
+                    conn.requestMethod = "PUT"
+                    conn.doOutput = true
+                    conn.connectTimeout = 2500
+                    conn.readTimeout = 2500
+                    conn.setRequestProperty("Authorization", "Bearer " + session.accessToken)
+                    conn.setRequestProperty("Content-Type", "application/json")
+                    conn.outputStream.use { out ->
+                        out.write(JSONObject().put("presence", value).toString().toByteArray(Charsets.UTF_8))
+                    }
+                    StartupTrace.mark("presence_publish_" + value + "_http_" + conn.responseCode)
+                } finally {
+                    conn.disconnect()
+                }
+            }.onFailure { error ->
+                StartupTrace.mark("presence_publish_" + value + "_error_" + error.javaClass.simpleName)
+            }
+        }
+    }
+
     private suspend fun fetchPresenceSnapshot(user: UserId): UserPresence =
         withContext(presenceIo) {
             runCatching {
