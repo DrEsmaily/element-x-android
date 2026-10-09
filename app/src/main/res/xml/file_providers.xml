@@ -7,5 +7,6 @@
   -->
 <paths>
     <cache-path name="cache" path="." />
+    <files-path name="startup_trace" path="syncme-startup-trace.txt" />
     <files-path name="notification_sounds" path="notification_sounds/" />
 </paths>
