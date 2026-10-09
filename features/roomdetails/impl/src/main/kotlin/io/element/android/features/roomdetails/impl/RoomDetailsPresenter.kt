@@ -66,6 +66,14 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import io.element.android.libraries.matrix.api.room.roomMembers
 import io.element.android.libraries.matrix.api.room.RoomMembershipState
+import io.element.android.libraries.matrix.api.user.UserPresence
+import io.element.android.libraries.matrix.api.user.completeOnlineCount
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 @AssistedInject
 class RoomDetailsPresenter(
@@ -128,6 +136,39 @@ class RoomDetailsPresenter(
         val roomType = getRoomType(dmMember)
         val roomCallState = roomCallStatePresenter.present()
         val joinedMemberCount by remember { derivedStateOf { roomInfo.joinedMembersCount } }
+        val dmPresence by produceState<UserPresence>(UserPresence.Unknown, dmMember?.userId) {
+            val userId = dmMember?.userId
+            if (userId != null) {
+                while (true) {
+                    value = client.getPresence(userId)
+                    delay(30_000)
+                }
+            }
+        }
+        val groupOnlineCount by produceState<Int?>(null, isDm, joinedMemberCount, membersState) {
+            if (!isDm) {
+                val members = membersState.roomMembers().orEmpty().filter {
+                    it.membership == RoomMembershipState.JOIN
+                }
+                if (members.size in 1..30 && members.size.toLong() == joinedMemberCount) {
+                    val limiter = Semaphore(5)
+                    while (true) {
+                        val states = coroutineScope {
+                            members.map { member ->
+                                async {
+                                    member.userId.value to limiter.withPermit {
+                                        client.getPresence(member.userId)
+                                    }
+                                }
+                            }.awaitAll().toMap()
+                        }
+                        value = completeOnlineCount(members.size, states)
+                        delay(60_000)
+                    }
+                }
+            }
+        }
+
 
         val topicState = remember(permissions.editDetailsPermissions.canEditTopic, roomTopic, roomType) {
             val topic = roomTopic
@@ -239,6 +280,8 @@ class RoomDetailsPresenter(
             roomAvatarUrl = roomAvatar,
             roomTopic = topicState,
             memberCount = joinedMemberCount,
+            dmPresence = dmPresence,
+            groupOnlineCount = groupOnlineCount,
             isEncrypted = isEncrypted,
             canInvite = permissions.canInvite,
             canCloseGroup = canCloseGroup,
