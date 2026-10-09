@@ -36,3 +36,5 @@ SyncMe 178: based on successful 176, account/banner fixes and public directory c
 SyncMe 179: resolve Kotlin delegate and Timber imports found by release 178 compilation.
 
 SyncMe next release: remove only custom duplicate directory controls; preserve directory loading and search fixes.
+
+SyncMe dedicated build: minimal DM presence only, base release 180; green dot list and Online header.
