@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import io.element.android.libraries.matrix.api.sync.SyncState
 import io.element.android.libraries.matrix.api.user.OwnPresenceMode
+import io.element.android.libraries.sessionstorage.api.SessionStore
 import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.State
@@ -90,6 +91,7 @@ import kotlinx.coroutines.launch
 @Inject
 class RoomListPresenter(
     private val client: MatrixClient,
+    private val sessionStore: SessionStore,
     private val leaveRoomPresenter: Presenter<LeaveRoomState>,
     private val roomListDataSource: RoomListDataSource,
     private val filtersPresenter: Presenter<RoomListFiltersState>,
@@ -120,11 +122,9 @@ class RoomListPresenter(
             presenceScreenActive = true
             onPauseOrDispose {
                 presenceScreenActive = false
-                coroutineScope.launch {
-                    if (!client.isAppearingOffline()) {
-                        client.setOwnPresence(OwnPresenceMode.SHOW_ACTIVITY, active = false)
-                    }
-                }
+                // Do not report offline on navigation: the private chat may be
+                // resuming at the same time. The Matrix server expires inactivity.
+
             }
         }
         LaunchedEffect(client.sessionId, presenceScreenActive) {
@@ -132,7 +132,7 @@ class RoomListPresenter(
                 client.syncService.syncState.collectLatest { syncState ->
                     if (syncState == SyncState.Running) {
                         while (true) {
-                            if (!client.isAppearingOffline()) {
+                            if (!client.isAppearingOffline() && sessionStore.getLatestSession()?.userId == client.sessionId.value) {
                                 client.setOwnPresence(OwnPresenceMode.SHOW_ACTIVITY, active = true)
                             }
                             delay(60_000)
