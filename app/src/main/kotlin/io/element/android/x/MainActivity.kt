@@ -9,6 +9,9 @@
 package io.element.android.x
 
 import android.content.Intent
+import androidx.core.content.FileProvider
+import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
+import java.io.File
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -52,15 +55,20 @@ class MainActivity : NodeActivity() {
     private lateinit var appBindings: AppBindings
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        StartupTrace.mark("activity_onCreate_start")
         Timber.tag(loggerTag.value).d("onCreate, with savedInstanceState: ${savedInstanceState != null}")
         installSplashScreen()
+        StartupTrace.mark("splash_installed")
         super.onCreate(savedInstanceState)
         appBindings = bindings()
         setupLockManagement(appBindings.lockScreenService(), appBindings.lockScreenEntryPoint())
         enableEdgeToEdge()
+        StartupTrace.mark("setContent_begin")
         setContent {
             MainContent(appBindings)
         }
+        StartupTrace.mark("setContent_return")
+        if (intent?.action == "io.syncme.EXPORT_STARTUP_TRACE") exportStartupTrace()
 
         val activity = this
         appBindings.appStartupHooks().forEach {
@@ -85,6 +93,7 @@ class MainActivity : NodeActivity() {
 
     @Composable
     private fun MainContent(appBindings: AppBindings) {
+        StartupTrace.mark("MainContent_composed")
         val migrationState = appBindings.migrationEntryPoint().present()
         val colors by remember {
             appBindings.enterpriseService().semanticColorsFlow(sessionId = null)
@@ -130,6 +139,7 @@ class MainActivity : NodeActivity() {
                     object : NodeReadyObserver<MainNode> {
                         override fun init(node: MainNode) {
                             Timber.tag(loggerTag.value).d("onMainNodeInit")
+                            StartupTrace.mark("main_node_ready")
                             mainNode = node
                             mainNode.handleIntent(intent)
                         }
@@ -169,11 +179,28 @@ class MainActivity : NodeActivity() {
         // If the mainNode is not init yet, keep the intent for later.
         // It can happen when the activity is killed by the system. The methods are called in this order :
         // onCreate(savedInstanceState=true) -> onNewIntent -> onResume -> onMainNodeInit
+        if (intent.action == "io.syncme.EXPORT_STARTUP_TRACE") {
+            exportStartupTrace()
+            return
+        }
         if (::mainNode.isInitialized) {
             mainNode.handleIntent(intent)
         } else {
             setIntent(intent)
         }
+    }
+
+    private fun exportStartupTrace() {
+        StartupTrace.mark("export_requested")
+        val file = File(filesDir, "syncme-startup-trace.txt")
+        if (!file.exists()) return
+        val uri = FileProvider.getUriForFile(this, "$packageName.fileprovider", file)
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(share, "Share SyncMe startup diagnostics"))
     }
 
     override fun onPause() {
@@ -183,6 +210,7 @@ class MainActivity : NodeActivity() {
 
     override fun onResume() {
         super.onResume()
+        StartupTrace.mark("activity_onResume")
         Timber.tag(loggerTag.value).d("onResume")
     }
 
