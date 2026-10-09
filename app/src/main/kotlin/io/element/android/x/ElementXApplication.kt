@@ -9,6 +9,7 @@
 package io.element.android.x
 
 import android.app.Application
+import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
 import android.os.StrictMode
 import androidx.compose.material3.ComposeMaterial3Flags.isAnchoredDraggableComponentsStrictOffsetCheckEnabled
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +40,7 @@ class ElementXApplication : Application(), DependencyInjectionGraphOwner, Config
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate() {
         super.onCreate()
+        StartupTrace.initialize(this)
 
         enableStrictMode()
 
