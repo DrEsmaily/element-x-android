@@ -87,6 +87,8 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.notification.CallIntent
 import io.element.android.libraries.matrix.api.room.RoomMember
+import io.element.android.libraries.matrix.api.user.UserPresence
+import io.element.android.libraries.matrix.api.user.displayText
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.room.getBestName
 import io.element.android.libraries.matrix.api.user.MatrixUser
@@ -173,6 +175,8 @@ fun RoomDetailsView(
                         roomId = state.roomId,
                         roomName = state.roomName,
                         roomAlias = state.roomAlias,
+                        memberCount = state.memberCount,
+                        onlineCount = state.groupOnlineCount,
                         heroes = state.heroes,
                         isTombstoned = state.isTombstoned,
                         openAvatarPreview = { avatarUrl ->
@@ -187,6 +191,7 @@ fun RoomDetailsView(
                     DmHeaderSection(
                         otherMember = state.roomType.otherMember,
                         roomName = state.roomName,
+                        presence = state.dmPresence,
                         isTombstoned = state.isTombstoned,
                         openAvatarPreview = { name, avatarUrl ->
                             openAvatarPreview(name, avatarUrl)
@@ -489,6 +494,8 @@ private fun RoomHeaderSection(
     roomId: RoomId,
     roomName: String,
     roomAlias: RoomAlias?,
+    memberCount: Long,
+    onlineCount: Int?,
     heroes: ImmutableList<MatrixUser>,
     isTombstoned: Boolean,
     openAvatarPreview: (url: String) -> Unit,
@@ -525,6 +532,13 @@ private fun RoomHeaderSection(
             style = ElementTheme.typography.fontHeadingLgBold,
             textAlign = TextAlign.Center,
         )
+        Text(
+            text = (if (memberCount == 1L) "1 member" else "$memberCount members") +
+                (if (onlineCount != null && onlineCount > 0) ", $onlineCount online" else ""),
+            style = ElementTheme.typography.fontBodySmRegular,
+            color = ElementTheme.colors.textSecondary,
+            textAlign = TextAlign.Center,
+        )
         if (roomAlias != null) {
             Spacer(modifier = Modifier.height(12.dp))
             Text(
@@ -543,6 +557,7 @@ private fun RoomHeaderSection(
 private fun DmHeaderSection(
     otherMember: RoomMember,
     roomName: String,
+    presence: UserPresence,
     isTombstoned: Boolean,
     openAvatarPreview: (name: String, url: String) -> Unit,
     onSubtitleClick: (String) -> Unit,
@@ -579,6 +594,16 @@ private fun DmHeaderSection(
             style = ElementTheme.typography.fontHeadingLgBold,
             textAlign = TextAlign.Center,
         )
+        val presenceLabel = presence.displayText(System.currentTimeMillis())
+        if (presenceLabel != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = presenceLabel,
+                style = ElementTheme.typography.fontBodySmRegular,
+                color = ElementTheme.colors.textSecondary,
+                textAlign = TextAlign.Center,
+            )
+        }
         val userStatus = otherMember.displayedStatus?.toText()
         if (userStatus != null) {
             Spacer(modifier = Modifier.height(12.dp))
