@@ -285,7 +285,7 @@ class RustMatrixClient(
             return Result.failure(IllegalStateException("Wait until Matrix sync is connected"))
         }
         val result = sendOwnPresence(mode, active)
-        if (result.isSuccess) {
+        if (result.isSuccess && ownPresenceMode != mode) {
             ownPresenceMode = mode
             runCatching {
                 ownPresenceFile.parentFile?.mkdirs()
