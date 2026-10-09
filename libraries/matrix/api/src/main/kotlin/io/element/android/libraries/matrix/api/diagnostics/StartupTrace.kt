@@ -18,13 +18,20 @@ object StartupTrace {
         Thread(task, "syncme-startup-trace").apply { isDaemon = true }
     }
     @Volatile private var target: File? = null
+    @Volatile private var directory: File? = null
+    private const val MAX_RUNS = 10
+    private const val RUN_LIMIT_BYTES = 256_000L
     private val processStart = SystemClock.elapsedRealtime()
     private val watchdogStarted = AtomicBoolean(false)
     private val processMarker = System.currentTimeMillis().toString(36)
 
     fun initialize(context: Context) {
-        val file = File(context.filesDir, "syncme-startup-trace.txt")
-        target = file
+        val folder = File(context.filesDir, "syncme-startup-runs")
+        folder.mkdirs()
+        directory = folder
+        target = File(folder, "run-" + System.currentTimeMillis().toString().padStart(13, '0') +
+            "-" + android.os.Process.myPid() + ".txt")
+        worker.execute { prune(folder) }
         mark("application_init")
         startWatchdog()
     }
@@ -62,6 +69,23 @@ object StartupTrace {
         }, "syncme-startup-watchdog").apply { isDaemon = true }.start()
     }
 
+    private fun prune(folder: File) {
+        val files = folder.listFiles { f -> f.isFile && f.name.startsWith("run-") && f.name.endsWith(".txt") }
+            ?.sortedByDescending { it.name } ?: return
+        files.drop(MAX_RUNS).forEach { runCatching { it.delete() } }
+    }
+
+    /** Call only from a background dispatcher; includes up to ten completed/current runs. */
+    fun readRecentReports(): String {
+        val folder = directory ?: return "Diagnostics unavailable."
+        val files = folder.listFiles { f -> f.isFile && f.name.startsWith("run-") && f.name.endsWith(".txt") }
+            ?.sortedBy { it.name }?.takeLast(MAX_RUNS).orEmpty()
+        return if (files.isEmpty()) "No startup data." else files.joinToString("\n\n") { file ->
+            "===== " + file.name + " =====\n" +
+                runCatching { file.readText() }.getOrDefault("Read error")
+        }
+    }
+
     fun mark(event: String) {
         val file = target ?: return
         val safe = event.replace(Regex("[^a-zA-Z0-9_.:-]"), "_").take(240)
@@ -69,10 +93,7 @@ object StartupTrace {
         val row = "${Instant.now()} pid=${android.os.Process.myPid()} run=$processMarker ms=$elapsed thread=${Thread.currentThread().name.take(32)} event=$safe\n"
         worker.execute {
             runCatching {
-                if (file.length() > 2_000_000L) {
-                    val tail = file.readText().takeLast(1_000_000)
-                    file.writeText("--- older diagnostics truncated ---\n" + tail)
-                }
+                if (file.length() >= RUN_LIMIT_BYTES) return@runCatching
                 file.appendText(row)
             }
         }
