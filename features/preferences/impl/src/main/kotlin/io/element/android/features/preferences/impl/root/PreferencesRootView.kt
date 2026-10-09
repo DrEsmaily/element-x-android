@@ -25,6 +25,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -306,6 +312,51 @@ private fun AppSettingsSection(
     onOpenLocationSettings: () -> Unit,
     onOpenMediaSettings: () -> Unit,
 ) {
+    var showPresenceDialog by remember { mutableStateOf(false) }
+    if (showPresenceDialog) {
+        AlertDialog(
+            onDismissRequest = { showPresenceDialog = false },
+            title = { Text("Last Seen & Online") },
+            text = {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            state.eventSink(PreferencesRootEvent.SetAppearOffline(false))
+                            showPresenceDialog = false
+                        }.padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = !state.appearOffline, onClick = {
+                            state.eventSink(PreferencesRootEvent.SetAppearOffline(false))
+                            showPresenceDialog = false
+                        })
+                        Text("Show My Activity", modifier = Modifier.padding(start = 8.dp))
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            state.eventSink(PreferencesRootEvent.SetAppearOffline(true))
+                            showPresenceDialog = false
+                        }.padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = state.appearOffline, onClick = {
+                            state.eventSink(PreferencesRootEvent.SetAppearOffline(true))
+                            showPresenceDialog = false
+                        })
+                        Text("Appear Offline", modifier = Modifier.padding(start = 8.dp))
+                    }
+                    Text(
+                        "Appear Offline is a client-side presence setting, not guaranteed last-seen privacy across Matrix devices.",
+                        style = ElementTheme.typography.fontBodySmRegular,
+                        color = ElementTheme.colors.textSecondary,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPresenceDialog = false }) { Text("Done") }
+            },
+        )
+    }
     PreferenceCategory(
         title = stringResource(CommonStrings.common_app_settings),
     ) {
@@ -320,6 +371,12 @@ private fun AppSettingsSection(
             }
         )
 ListItem(
+            content = { Text("Last Seen & Online") },
+            supportingContent = { Text(if (state.appearOffline) "Appear Offline" else "Show My Activity") },
+            leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
+            onClick = { showPresenceDialog = true },
+        )
+        ListItem(
             content = { Text(stringResource(id = CommonStrings.common_screen_lock)) },
             leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Lock())),
             onClick = onOpenLockScreenSettings,
