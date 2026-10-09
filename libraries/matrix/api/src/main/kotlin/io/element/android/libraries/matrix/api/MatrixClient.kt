@@ -94,6 +94,10 @@ interface MatrixClient : ClientUrlContentFetcher {
     val presenceStates: StateFlow<Map<String, UserPresence>>
         get() = kotlinx.coroutines.flow.MutableStateFlow(emptyMap())
 
+    /** Subscription to the presence-only Matrix event stream. Shared across UI surfaces. */
+    val presenceUpdates: Flow<Unit>
+        get() = kotlinx.coroutines.flow.emptyFlow()
+
     /** Best-effort online heartbeat for the selected session, only after connected sync. */
     suspend fun announceOnline(): Unit = Unit
 
