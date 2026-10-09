@@ -113,6 +113,11 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -218,6 +223,87 @@ class RustMatrixClient(
     private val presenceIo = kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)
     private val mutablePresenceStates = MutableStateFlow<Map<String, UserPresence>>(emptyMap())
     override val presenceStates: StateFlow<Map<String, UserPresence>> = mutablePresenceStates
+    // Dedicated filtered /sync long-poll for m.presence events. The existing Rust SDK
+    // SyncService is never replaced or intercepted. One upstream for all UI screens.
+    override val presenceUpdates: Flow<Unit> by lazy {
+        flow {
+            var since: String? = null
+            var failures = 0
+            while (currentCoroutineContext().isActive) {
+                if (syncService.syncState.value != SyncState.Running) {
+                    delay(1500)
+                    continue
+                }
+                val session = sessionStore.getSession(sessionId.value)
+                if (session == null) {
+                    delay(3000)
+                    continue
+                }
+                val filter = """{"room":{"rooms":[]},"presence":{"types":["m.presence"]},"account_data":{"types":[]},"to_device":{"types":[]}}"""
+                val endpoint = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=25000&filter=" +
+                    URLEncoder.encode(filter, "UTF-8") +
+                    (since?.let { "&since=" + URLEncoder.encode(it, "UTF-8") } ?: "")
+                val response = withContext(presenceIo) {
+                    runCatching {
+                        val connection = URL(endpoint).openConnection() as HttpURLConnection
+                        try {
+                            connection.requestMethod = "GET"
+                            connection.instanceFollowRedirects = false
+                            connection.connectTimeout = 4000
+                            connection.readTimeout = 32000
+                            connection.setRequestProperty("Authorization", "Bearer " + session.accessToken)
+                            connection.setRequestProperty("Accept", "application/json")
+                            if (connection.responseCode != 200) null else
+                                JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+                        } finally {
+                            connection.disconnect()
+                        }
+                    }.getOrNull()
+                }
+                if (response == null) {
+                    failures++
+                    if (failures >= 2) {
+                        // Never show stale green dots after a failed presence channel.
+                        mutablePresenceStates.update { states -> states.mapValues { (_, value) ->
+                            if (value is UserPresence.Online) UserPresence.Unknown else value
+                        } }
+                    }
+                    delay(3000L.coerceAtMost(1000L * failures.coerceAtMost(3)))
+                    continue
+                }
+                failures = 0
+                val next = response.optString("next_batch")
+                if (next.isNotBlank()) since = next
+                val events = response.optJSONObject("presence")?.optJSONArray("events")
+                if (events != null) {
+                    val updates = buildMap<String, UserPresence> {
+                        for (i in 0 until events.length()) {
+                            val event = events.optJSONObject(i) ?: continue
+                            if (event.optString("type") != "m.presence") continue
+                            val sender = event.optString("sender")
+                            if (!sender.startsWith("@")) continue
+                            val content = event.optJSONObject("content") ?: continue
+                            val state = when (content.optString("presence")) {
+                                "online" -> UserPresence.Online
+                                "unavailable" -> UserPresence.Away
+                                "offline" -> {
+                                    val age = content.optLong("last_active_ago", -1L)
+                                    UserPresence.Offline(if (age >= 0) System.currentTimeMillis() - age else null)
+                                }
+                                else -> UserPresence.Unknown
+                            }
+                            if (state !is UserPresence.Unknown) put(sender, state)
+                        }
+                    }
+                    if (updates.isNotEmpty()) {
+                        mutablePresenceStates.update { states -> states + updates }
+                        emit(Unit)
+                    }
+                }
+            }
+        }.shareIn(sessionCoroutineScope, SharingStarted.WhileSubscribed(stopTimeoutMillis = 3000), replay = 0)
+    }
+
 
     override suspend fun getPresence(userId: UserId): UserPresence =
         kotlinx.coroutines.withContext(presenceIo) {
