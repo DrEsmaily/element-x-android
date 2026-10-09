@@ -136,6 +136,7 @@ import org.matrix.rustcomponents.sdk.AuthData
 import org.matrix.rustcomponents.sdk.AuthDataPasswordDetails
 import org.matrix.rustcomponents.sdk.BeaconInfoListener
 import org.matrix.rustcomponents.sdk.BeaconInfoUpdate
+import org.matrix.rustcomponents.sdk.PresenceState
 import org.matrix.rustcomponents.sdk.Client
 import org.matrix.rustcomponents.sdk.ClientException
 import org.matrix.rustcomponents.sdk.IgnoredUsersListener
@@ -226,6 +227,15 @@ class RustMatrixClient(
     override val presenceStates: StateFlow<Map<UserId, UserPresence>> = mutablePresenceStates
     private val presenceIo = dispatchers.io.limitedParallelism(4)
     private val presenceObserverStarted = AtomicBoolean(false)
+
+    override suspend fun announceOnline() {
+        // Never report activity for an inactive account or while login/sync is starting.
+        if (syncService.syncState.value != SyncState.Running) return
+        if (sessionStore.getLatestSession()?.userId != sessionId.value) return
+        withContext(sessionDispatcher) {
+            runCatching { innerClient.setPresence(PresenceState.ONLINE, true) }
+        }
+    }
 
     override fun trackPresence(userIds: Set<UserId>) {
         userIds.filter { it != sessionId }.forEach { user ->
