@@ -19,8 +19,8 @@ object StartupTrace {
     }
     @Volatile private var target: File? = null
     @Volatile private var directory: File? = null
-    private const val MAX_RUNS = 10
-    private const val RUN_LIMIT_BYTES = 256_000L
+    private const val MAX_RUNS = 20
+    private const val RUN_LIMIT_BYTES = 2_000_000L
     private val processStart = SystemClock.elapsedRealtime()
     private val watchdogStarted = AtomicBoolean(false)
     private val processMarker = System.currentTimeMillis().toString(36)
@@ -111,6 +111,24 @@ object StartupTrace {
                 success
             }.get()
         }.getOrDefault(false)
+    }
+
+    fun recordFailure(label: String, error: Throwable) {
+        mark(label + "_failure")
+        var cause: Throwable? = error
+        var depth = 0
+        while (cause != null && depth < 12) {
+            val current = cause
+            mark(label + "_cause_" + depth + "_" + current.javaClass.name)
+            current.message.orEmpty().chunked(120).take(20).forEachIndexed { i, part ->
+                mark(label + "_message_" + depth + "_" + i + "_" + part)
+            }
+            current.stackTrace.take(20).forEachIndexed { i, frame ->
+                mark(label + "_frame_" + depth + "_" + i + "_" + frame.className + "." + frame.methodName + ":" + frame.lineNumber)
+            }
+            cause = current.cause
+            depth++
+        }
     }
 
     fun mark(event: String) {
