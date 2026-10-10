@@ -59,9 +59,12 @@ class RustSyncService(
                 Timber.d("Can't stop sync: service is not ready")
                 return@runCatchingExceptions
             }
+            StartupTrace.mark("rust_sync_stop_begin")
             Timber.i("Stop sync")
             inner.stop()
+            StartupTrace.mark("rust_sync_stop_return")
         }.onFailure {
+            StartupTrace.mark("rust_sync_stop_failure_" + diagnosticError(it))
             Timber.d("Stop sync failed: $it")
         }
     }
@@ -69,9 +72,11 @@ class RustSyncService(
     suspend fun destroy() = withContext(NonCancellable) {
         // If the service was still running, stop it
         stopSync()
+        StartupTrace.mark("rust_sync_destroy_begin")
         Timber.d("Destroying sync service")
         isServiceReady.set(false)
         inner.destroy()
+        StartupTrace.mark("rust_sync_destroy_done")
     }
 
     override val syncState: StateFlow<SyncState> =
