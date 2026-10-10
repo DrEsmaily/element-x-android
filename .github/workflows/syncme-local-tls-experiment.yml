@@ -47,7 +47,9 @@ jobs:
           begin='''        val validChain = try {
             trustManager.checkServerTrusted'''
           assert s.count(begin)==1
-          s=s.replace(begin,'''        syncMeTlsTrace("tls_chain_validation_begin")
+          s=s.replace(begin,'''        syncMeTlsTrace("tls_verify_" + if (serverName == "syncme.ir" || serverName.endsWith(".syncme.ir")) "firstparty" else "other_host")
+        syncMeTlsTrace("tls_verify_thread_" + if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) "main" else "background")
+        syncMeTlsTrace("tls_chain_validation_begin")
                   val validChain = try {
                       trustManager.checkServerTrusted''')
           done='''        // TEST ONLY: Mock test suite cannot attempt to check revocation status'''
