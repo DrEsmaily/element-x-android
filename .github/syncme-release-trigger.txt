@@ -69,3 +69,5 @@ Build 234: Keystore PIN detection and migration flow on Dispatchers.IO; preserve
 Combined build: retain 234 Keystore startup optimization and off-main Rust thread-list pagination/reset to avoid Poco F5 freezes.
 
 SDK 26.09.26 official release compatibility test October 10 2026
+
+SDK 26.09.26 API compatibility compile probe 2 2026-10-10
