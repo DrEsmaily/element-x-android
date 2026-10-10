@@ -19,6 +19,7 @@ on:
       - syncme-232-presence-event-clearlogs
       - syncme-233-presence-lifecycle
       - syncme-234-keystore-startup-io
+      - syncme-235-threadlist-keystore-combined
     paths:
       - '.github/syncme-release-trigger.txt'
 
