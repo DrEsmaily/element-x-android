@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
+      - syncme-test-180-uncompressed-20261010
       - syncme-164-tags-pages
       - syncme-178-from-176
     paths:
@@ -62,8 +63,8 @@ jobs:
       - name: Build optimized SyncMe release APK
         env:
           SYNCME_BUILD_NUMBER: ${{ github.run_number }}
-        # Compress native .so files and let Android extract them on install; preserve all app features.
-        run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=true -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
+        # Test native libraries uncompressed; keep all other compile settings unchanged.
+        run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=false -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
 
       - name: Generate full per-build continuation TXT
         if: always()
