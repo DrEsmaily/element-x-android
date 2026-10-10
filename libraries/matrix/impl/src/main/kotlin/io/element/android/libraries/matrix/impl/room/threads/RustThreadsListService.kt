@@ -17,6 +17,8 @@ import io.element.android.libraries.matrix.api.room.threads.ThreadsListService
 import io.element.android.libraries.matrix.impl.timeline.item.event.TimelineEventContentMapper
 import io.element.android.libraries.matrix.impl.timeline.item.event.map
 import io.element.android.libraries.matrix.impl.util.mxCallbackFlow
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -79,12 +81,14 @@ class RustThreadsListService(
         }
     }
 
-    override suspend fun paginate(): Result<Unit> = runCatchingExceptions {
-        inner.paginate()
+    // Rust FFI may perform TLS/CRL verification while paginating.
+    // Keep the entire SDK future (including continuation polling) off Android's main thread.
+    override suspend fun paginate(): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatchingExceptions { inner.paginate() }
     }
 
-    override suspend fun reset(): Result<Unit> = runCatchingExceptions {
-        inner.reset()
+    override suspend fun reset(): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatchingExceptions { inner.reset() }
     }
 
     override fun destroy() {
