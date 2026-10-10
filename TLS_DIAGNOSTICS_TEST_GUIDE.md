@@ -4,7 +4,8 @@ The existing app StartupTrace report has a "Copy All" control and retains up to 
 
 ## Events to expect
 - tls_verify_firstparty: TLS certificate target is syncme.ir or its subdomain (not necessarily a successful connection).
-- tls_verify_other_host: certificate verification was invoked for another host; the host string is intentionally not logged.
+- tls_verify_other_host: certificate verification was invoked for another host.
+- tls_host_<hostname>: full TLS hostname used for verification, logged for this experimental build.
 - tls_verify_thread_main / tls_verify_thread_background: verifier invocation thread.
 - tls_chain_validation_begin: Android trust manager chain validation begins.
 - tls_chain_rejected: Android trust manager rejected a certificate.
@@ -26,3 +27,6 @@ Capture device traffic (including DNS) separately from the app with a system-lev
 
 ## Acceptance
 Before release: successful patched Android verifier AAR build, Release APK resolved against that patched dependency, a positive runtime TLS event in copied log, negative tests for bad certificates, a no-international-network test, and external traffic capture. UI must remain responsive. Store run SHA and test result.
+
+## Experimental verbosity policy
+Full TLS hostnames are included in the experimental copyable report, including third-party certificate destinations. Do not collect raw bearer tokens, passwords, Matrix recovery keys or private encryption keys; those are unnecessary to diagnose external certificate lookups. DNS, IP and HTTP path capture require separate network hooks. tls_host describes verifier calls, not every network request.
