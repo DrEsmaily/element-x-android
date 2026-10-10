@@ -15,6 +15,7 @@ on:
       - syncme-226-presence-offline-fast
       - syncme-227-background-away
       - syncme-228-mainthread-presence-429
+      - syncme-229-capabilities-off-main
     paths:
       - '.github/syncme-release-trigger.txt'
 
