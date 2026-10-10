@@ -30,3 +30,14 @@ Before release: successful patched Android verifier AAR build, Release APK resol
 
 ## Experimental verbosity policy
 Full TLS hostnames are included in the experimental copyable report, including third-party certificate destinations. Do not collect raw bearer tokens, passwords, Matrix recovery keys or private encryption keys; those are unnecessary to diagnose external certificate lookups. DNS, IP and HTTP path capture require separate network hooks. tls_host describes verifier calls, not every network request.
+
+## Network environment events (new experimental build)
+- net_monitor_started: Android default-network callback registered.
+- net_active_ / net_available_ / net_lost_: Android default network identifiers and transitions.
+- net_configured_dns_: IP addresses of configured DNS resolvers, NOT individual DNS queries.
+- net_local_address_: device local network interface addresses, NOT remote connection IPs.
+- net_using_vpn_: transport classified as VPN by Android.
+- net_internet_capability_: Android network reports INTERNET capability; not proof of reachability.
+- net_uid_tx_*_rx_*: Android TrafficStats total bytes for app UID, not destination-level accounting.
+- tls_host_: full hostname passed to the patched TLS verifier.
+These are saved with startup/ANR and TLS timing in Copy All reports. IMPORTANT: this does not capture individual remote socket IPs, DNS lookups, HTTP URLs/paths, WebView connections or OCSP network from the operating system. A packet capture or instrumented SDK transport is still required before claiming zero external connections.
