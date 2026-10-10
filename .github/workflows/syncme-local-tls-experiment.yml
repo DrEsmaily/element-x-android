@@ -33,31 +33,31 @@ jobs:
           anchor='    @JvmStatic\\n    private fun verifyCertificateChain('
           assert s.count(anchor)==1
           helper='''    private fun syncMeTlsTrace(event: String) {
-        try {
-            val trace = Class.forName("io.element.android.libraries.matrix.api.diagnostics.StartupTrace")
-            val instance = trace.getField("INSTANCE").get(null)
-            trace.getMethod("mark", String::class.java).invoke(instance, event)
-        } catch (_: Exception) {
-            // Telemetry must never interfere with certificate validation.
-        }
-    }
-
-'''
+                  try {
+                      val trace = Class.forName("io.element.android.libraries.matrix.api.diagnostics.StartupTrace")
+                      val instance = trace.getField("INSTANCE").get(null)
+                      trace.getMethod("mark", String::class.java).invoke(instance, event)
+                  } catch (_: Exception) {
+                      // Telemetry must never interfere with certificate validation.
+                  }
+              }
+          
+          '''
           s=s.replace(anchor,helper+anchor)
           begin='''        val validChain = try {
             trustManager.checkServerTrusted'''
           assert s.count(begin)==1
           s=s.replace(begin,'''        syncMeTlsTrace("tls_chain_validation_begin")
-        val validChain = try {
-            trustManager.checkServerTrusted''')
+                  val validChain = try {
+                      trustManager.checkServerTrusted''')
           done='''        // TEST ONLY: Mock test suite cannot attempt to check revocation status'''
           assert s.count(done)==1
           s=s.replace(done,'''        syncMeTlsTrace("tls_chain_valid_revocation_offline_skipped")
-''' +done)
+          ''' +done)
           rejection='''            return VerificationResult(StatusCode.UnknownCert, e.toString())'''
           assert s.count(rejection)==1
           s=s.replace(rejection,'''            syncMeTlsTrace("tls_chain_rejected")
-''' +rejection)
+          ''' +rejection)
           marker="        // TEST ONLY: Mock test suite cannot attempt to check revocation status"
           assert s.count(marker)==1
           s=s.replace(marker,"        // SyncMe: trust-manager chain validation has succeeded. Do not query CRL/OCSP.\n        return VerificationResult(StatusCode.Ok)\n\n"+marker)
