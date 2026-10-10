@@ -67,3 +67,5 @@ Build 233: Preserve 231 TLS off-main fix and 232 Clear Logs/event presence; fore
 Build 234: Keystore PIN detection and migration flow on Dispatchers.IO; preserve secure lock, Sentry, TLS and presence.
 
 Combined build: retain 234 Keystore startup optimization and off-main Rust thread-list pagination/reset to avoid Poco F5 freezes.
+
+SDK 26.06.11 isolated compatibility build on 2026-10-10
