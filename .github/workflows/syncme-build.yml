@@ -20,6 +20,7 @@ on:
       - syncme-233-presence-lifecycle
       - syncme-234-keystore-startup-io
       - syncme-235-threadlist-keystore-combined
+      - syncme-sdk-260926-official-test
     paths:
       - '.github/syncme-release-trigger.txt'
 
