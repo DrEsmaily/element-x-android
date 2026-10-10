@@ -46,6 +46,7 @@ data class RoomListRoomSummary(
     val dmUserStatus: DisplayedStatus?,
     val dmUserId: String? = null,
     val isOnline: Boolean = false,
+    val isAway: Boolean = false,
 ) {
     val isHighlighted = userDefinedNotificationMode != RoomNotificationMode.MUTE &&
         (numberOfUnreadNotifications > 0 || numberOfUnreadMentions > 0) ||
