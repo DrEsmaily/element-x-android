@@ -17,6 +17,7 @@ on:
       - syncme-228-mainthread-presence-429
       - syncme-229-capabilities-off-main
       - syncme-232-presence-event-clearlogs
+      - syncme-233-presence-lifecycle
     paths:
       - '.github/syncme-release-trigger.txt'
 
