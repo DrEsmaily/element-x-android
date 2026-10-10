@@ -125,6 +125,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
@@ -230,6 +231,9 @@ class RustMatrixClient(
     private val presenceIo = dispatchers.io.limitedParallelism(4)
     private val presenceObserverStarted = AtomicBoolean(false)
     private val visibilityObserverStarted = AtomicBoolean(false)
+    private val presencePublishLock = kotlinx.coroutines.sync.Mutex()
+    private var lastPublishedPresence: String? = null
+    private var nextPresenceAttemptAt = 0L
     private val presenceRefreshSlots = kotlinx.coroutines.sync.Semaphore(2)
 
     override fun trackPresence(userIds: Set<UserId>) {
@@ -296,28 +300,51 @@ class RustMatrixClient(
         }
     }
     private suspend fun publishOwnPresence(value: String) {
-        withContext(presenceIo) {
-            runCatching {
-                val session = sessionStore.getSession(sessionId.value) ?: return@withContext
-                val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/presence/" +
-                    URLEncoder.encode(sessionId.value, "UTF-8") + "/status"
-                val conn = URL(url).openConnection() as HttpURLConnection
-                try {
-                    conn.requestMethod = "PUT"
-                    conn.doOutput = true
-                    conn.connectTimeout = 2500
-                    conn.readTimeout = 2500
-                    conn.setRequestProperty("Authorization", "Bearer " + session.accessToken)
-                    conn.setRequestProperty("Content-Type", "application/json")
-                    conn.outputStream.use { out ->
-                        out.write(JSONObject().put("presence", value).toString().toByteArray(Charsets.UTF_8))
+        // Serialize foreground/background transitions and never retry stale states.
+        presencePublishLock.withLock {
+            if (lastPublishedPresence == value) {
+                StartupTrace.mark("presence_publish_deduplicated")
+                return@withLock
+            }
+            val waitMs = (nextPresenceAttemptAt - System.currentTimeMillis()).coerceAtLeast(0L)
+            if (waitMs > 0L) {
+                StartupTrace.mark("presence_rate_limit_wait_ms_" + waitMs)
+                delay(waitMs)
+            }
+            // collectLatest can cancel this operation when the foreground state changes.
+            withContext(presenceIo) {
+                runCatching {
+                    val session = sessionStore.getSession(sessionId.value) ?: return@withContext
+                    val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/presence/" +
+                        URLEncoder.encode(sessionId.value, "UTF-8") + "/status"
+                    val conn = URL(url).openConnection() as HttpURLConnection
+                    try {
+                        conn.requestMethod = "PUT"
+                        conn.doOutput = true
+                        conn.connectTimeout = 2500
+                        conn.readTimeout = 2500
+                        conn.setRequestProperty("Authorization", "Bearer " + session.accessToken)
+                        conn.setRequestProperty("Content-Type", "application/json")
+                        conn.outputStream.use { out ->
+                            out.write(JSONObject().put("presence", value).toString().toByteArray(Charsets.UTF_8))
+                        }
+                        val code = conn.responseCode
+                        StartupTrace.mark("presence_publish_" + value + "_http_" + code)
+                        if (code == 200) {
+                            lastPublishedPresence = value
+                            nextPresenceAttemptAt = 0L
+                        } else if (code == 429) {
+                            val retrySeconds = conn.getHeaderField("Retry-After")?.trim()?.toLongOrNull()
+                            val retryMs = ((retrySeconds ?: 15L).coerceIn(2L, 120L)) * 1000L
+                            nextPresenceAttemptAt = System.currentTimeMillis() + retryMs
+                            StartupTrace.mark("presence_http_429_retry_after_ms_" + retryMs)
+                        }
+                    } finally {
+                        conn.disconnect()
                     }
-                    StartupTrace.mark("presence_publish_" + value + "_http_" + conn.responseCode)
-                } finally {
-                    conn.disconnect()
+                }.onFailure { error ->
+                    StartupTrace.mark("presence_publish_" + value + "_error_" + error.javaClass.simpleName)
                 }
-            }.onFailure { error ->
-                StartupTrace.mark("presence_publish_" + value + "_error_" + error.javaClass.simpleName)
             }
         }
     }
@@ -534,8 +561,16 @@ class RustMatrixClient(
     }
 
     override val ignoredUsersFlow = mxCallbackFlow<ImmutableList<UserId>> {
-        // Fetch the initial value manually, the SDK won't return it automatically
-        channel.trySend(innerClient.ignoredUsers().map(::UserId).toImmutableList())
+        // The Rust FFI call may perform synchronous TLS/CRL network validation.
+        // Never run its callbackFlow producer on the Android main thread.
+        StartupTrace.mark("ignored_users_fetch_begin")
+        val ignoredUsersStart = android.os.SystemClock.elapsedRealtime()
+        try {
+            channel.trySend(innerClient.ignoredUsers().map(::UserId).toImmutableList())
+        } finally {
+            StartupTrace.mark("ignored_users_fetch_elapsed_ms_" +
+                (android.os.SystemClock.elapsedRealtime() - ignoredUsersStart))
+        }
 
         innerClient.subscribeToIgnoredUsers(object : IgnoredUsersListener {
             override fun call(ignoredUserIds: List<String>) {
@@ -543,6 +578,7 @@ class RustMatrixClient(
             }
         })
     }
+        .flowOn(sessionDispatcher)
         .buffer(Channel.UNLIMITED)
         .stateIn(sessionCoroutineScope, started = SharingStarted.Eagerly, initialValue = persistentListOf())
 
