@@ -2,7 +2,10 @@ name: SyncMe Local TLS verifier experiment
 on:
   push:
     branches: [syncme-234-local-tls-no-crl-experiment-20261010]
-    paths: ['.github/workflows/syncme-local-tls-experiment.yml']
+    paths:
+      - '.github/workflows/syncme-local-tls-experiment.yml'
+      - 'app/src/main/kotlin/io/element/android/x/NetworkDiagnostics.kt'
+      - 'app/src/main/kotlin/io/element/android/x/ElementXApplication.kt'
   workflow_dispatch:
 permissions:
   contents: read
