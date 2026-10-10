@@ -234,7 +234,7 @@ class RustMatrixClient(
     private val presencePublishLock = kotlinx.coroutines.sync.Mutex()
     private var lastPublishedPresence: String? = null
     private var nextPresenceAttemptAt = 0L
-    private val presenceRefreshSlots = kotlinx.coroutines.sync.Semaphore(2)
+    private val presenceSnapshotSlots = kotlinx.coroutines.sync.Semaphore(4)
 
     override fun trackPresence(userIds: Set<UserId>) {
         StartupTrace.mark("presence_track_called_count_" + userIds.size)
@@ -242,7 +242,7 @@ class RustMatrixClient(
             if (trackedPresenceUsers.add(user)) {
                 // Exactly one initial snapshot for each new user; subsequent changes are push events.
                 sessionCoroutineScope.launch(presenceIo) {
-                    val status = fetchPresenceSnapshot(user)
+                    val status = presenceSnapshotSlots.withPermit { fetchPresenceSnapshot(user) }
                     if (status != UserPresence.Unknown && trackedPresenceUsers.contains(user)) {
                         mutablePresenceStates.update { current ->
                             if (user in current) current else current + (user to status)
@@ -263,7 +263,6 @@ class RustMatrixClient(
         }
         if (presenceObserverStarted.compareAndSet(false, true)) {
             StartupTrace.mark("presence_observer_first_started")
-            sessionCoroutineScope.launch(presenceIo) { refreshOnlinePresence() }
             sessionCoroutineScope.launch(presenceIo) {
                 syncService.syncState.collectLatest { syncState ->
                     if (syncState == SyncState.Running) {
@@ -277,28 +276,6 @@ class RustMatrixClient(
         }
     }
 
-    // Bounded backup check for missed/delayed presence events. Server controls
-    // the earliest OFFLINE result after a force-stop; do not fabricate offline.
-    private suspend fun refreshOnlinePresence() {
-        while (kotlin.coroutines.coroutineContext.isActive) {
-            delay(12_000L)
-            if (syncService.syncState.value != SyncState.Running) continue
-            val peers = mutablePresenceStates.value.filterValues { it == UserPresence.Online }.keys.take(10)
-            for (peer in peers) {
-                sessionCoroutineScope.launch(presenceIo) {
-                    presenceRefreshSlots.withPermit {
-                        val fresh = fetchPresenceSnapshot(peer)
-                        if (fresh != UserPresence.Unknown && fresh != UserPresence.Online) {
-                            mutablePresenceStates.update { states ->
-                                if (states[peer] == UserPresence.Online) states + (peer to fresh) else states
-                            }
-                            StartupTrace.mark("presence_revalidation_non_online")
-                        }
-                    }
-                }
-            }
-        }
-    }
     private suspend fun publishOwnPresence(value: String) {
         // Serialize foreground/background transitions and never retry stale states.
         presencePublishLock.lock()
