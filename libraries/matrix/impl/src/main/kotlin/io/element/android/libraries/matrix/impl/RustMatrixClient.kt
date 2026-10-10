@@ -235,6 +235,14 @@ class RustMatrixClient(
     private var lastPublishedPresence: String? = null
     private var nextPresenceAttemptAt = 0L
     private val presenceSnapshotSlots = kotlinx.coroutines.sync.Semaphore(4)
+    // Elapsed time, never wall clock: lifecycle transitions do not depend on device clock changes.
+    @Volatile private var presenceBackgroundAtMs: Long? = null
+    private fun desiredOwnPresence(): String {
+        val backgroundAt = presenceBackgroundAtMs ?: return "online"
+        val elapsed = android.os.SystemClock.elapsedRealtime() - backgroundAt
+        return if (elapsed >= 300_000L) "offline" else "unavailable"
+    }
+
 
     override fun trackPresence(userIds: Set<UserId>) {
         StartupTrace.mark("presence_track_called_count_" + userIds.size)
@@ -255,9 +263,19 @@ class RustMatrixClient(
             sessionCoroutineScope.launch(presenceIo) {
                 SyncMeAppVisibility.isForeground.collectLatest { foreground ->
                     if (foreground == null) return@collectLatest
-                    // A brief transition during an Activity switch must not cause a false Away.
-                    if (!foreground) delay(500L)
-                    publishOwnPresence(if (foreground) "online" else "unavailable")
+                    // A transient Activity switch is not an Away transition.
+                    if (foreground) {
+                        presenceBackgroundAtMs = null
+                        publishOwnPresence("online")
+                    } else {
+                        presenceBackgroundAtMs = android.os.SystemClock.elapsedRealtime()
+                        delay(1_000L)
+                        publishOwnPresence("unavailable")
+                        // After five minutes of continuous background time, request Offline.
+                        // This is best effort: Android may stop the process or networking.
+                        delay(300_000L)
+                        publishOwnPresence("offline")
+                    }
                 }
             }
         }
@@ -370,7 +388,7 @@ class RustMatrixClient(
         while (kotlin.coroutines.coroutineContext.isActive) {
             val session = sessionStore.getSession(sessionId.value) ?: break
             val url = homeserverUrl.trimEnd('/') + "/_matrix/client/v3/sync?timeout=30000&set_presence=" +
-                (if (SyncMeAppVisibility.isForeground.value == false) "unavailable" else "online") +
+                desiredOwnPresence() +
                 "&filter=" + filter + (since?.let { "&since=" + URLEncoder.encode(it, "UTF-8") } ?: "")
             var connection: HttpURLConnection? = null
             try {
