@@ -301,10 +301,11 @@ class RustMatrixClient(
     }
     private suspend fun publishOwnPresence(value: String) {
         // Serialize foreground/background transitions and never retry stale states.
-        presencePublishLock.withLock {
+        presencePublishLock.lock()
+        try {
             if (lastPublishedPresence == value) {
                 StartupTrace.mark("presence_publish_deduplicated")
-                return@withLock
+                return
             }
             val waitMs = (nextPresenceAttemptAt - System.currentTimeMillis()).coerceAtLeast(0L)
             if (waitMs > 0L) {
@@ -346,6 +347,8 @@ class RustMatrixClient(
                     StartupTrace.mark("presence_publish_" + value + "_error_" + error.javaClass.simpleName)
                 }
             }
+        } finally {
+            presencePublishLock.unlock()
         }
     }
 
