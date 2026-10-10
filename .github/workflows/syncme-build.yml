@@ -11,6 +11,7 @@ on:
       - syncme-220-diagnostics-export-fix
       - syncme-221-diagnostics-text-view
       - syncme-222-deep-startup-network-trace
+      - syncme-test-224-uncompressed-20261010
     paths:
       - '.github/syncme-release-trigger.txt'
 
@@ -67,8 +68,8 @@ jobs:
       - name: Build optimized SyncMe release APK
         env:
           SYNCME_BUILD_NUMBER: ${{ github.run_number }}
-        # Compress native .so files and let Android extract them on install; preserve all app features.
-        run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=true -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
+        # A/B test: leave native .so libraries uncompressed; no application source changes.
+        run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=false -x lintVitalGplayRelease $CI_GRADLE_ARG_PROPERTIES
 
       - name: Generate full per-build continuation TXT
         if: always()
