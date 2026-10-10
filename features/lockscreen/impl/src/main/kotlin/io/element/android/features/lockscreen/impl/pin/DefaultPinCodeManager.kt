@@ -15,6 +15,8 @@ import io.element.android.features.lockscreen.impl.storage.LockScreenStore
 import io.element.android.libraries.cryptography.api.EncryptionDecryptionService
 import io.element.android.libraries.cryptography.api.EncryptionResult
 import io.element.android.libraries.cryptography.api.SecretKeyRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onStart
@@ -54,6 +56,8 @@ class DefaultPinCodeManager(
                     }
                 }
             }
+            // Android Keystore and migration storage can block; never collect on Main.
+            .flowOn(Dispatchers.IO)
     }
 
     override suspend fun getPinCodeSize(): Int? {
