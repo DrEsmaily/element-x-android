@@ -61,3 +61,5 @@ Build 228: move ignoredUsers Rust TLS/CRL FFI off main dispatcher; serialize pre
 SyncMe 229 — off-main homeserver capability TLS checks regression test
 
 Release: retain build 231 TLS fix; add safe Clear Logs and event-driven presence without 10-person periodic recheck.
+
+Build 233: Preserve 231 TLS off-main fix and 232 Clear Logs/event presence; foreground online, background away after 1s, best-effort offline after 5 minutes.
