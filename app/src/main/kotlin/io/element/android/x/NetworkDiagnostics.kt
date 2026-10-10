@@ -80,7 +80,7 @@ internal object NetworkDiagnostics {
                     StartupTrace.mark("probe_tcp_443_ok_ms_" + (SystemClock.elapsedRealtime() - connectAt) + "_ip_" + address.hostAddress)
                     socket.soTimeout = 3500
                     val tlsAt = SystemClock.elapsedRealtime()
-                    (SSLSocketFactory.getDefault().createSocket(socket, host, 443, true) as javax.net.ssl.SSLSocket).use { tls ->
+                    ((SSLSocketFactory.getDefault() as SSLSocketFactory).createSocket(socket, host, 443, true) as javax.net.ssl.SSLSocket).use { tls ->
                         tls.soTimeout = 3500
                         tls.startHandshake()
                         StartupTrace.mark("probe_tls_ok_ms_" + (SystemClock.elapsedRealtime() - tlsAt) + "_protocol_" + tls.session.protocol)
