@@ -71,6 +71,13 @@ jobs:
           p.write_text(s)
           
           PY
+      - name: Preserve JNI entrypoint and result fields
+        run: |
+          cat >> /tmp/syncme-verifier/android/rustls-platform-verifier/consumer-rules.pro <<'EOF'
+          -keep class org.rustls.platformverifier.CertificateVerifier { *; }
+          -keep class org.rustls.platformverifier.VerificationResult { *; }
+          -keep class org.rustls.platformverifier.StatusCode { *; }
+          EOF
       - name: Build patched verifier AAR
         run: |
           cd /tmp/syncme-verifier/android
