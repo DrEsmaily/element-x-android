@@ -57,8 +57,7 @@ class RustSearchBackfillService(
         if (currentSearchBackfillTaskHandle.get()?.isRunning() == true) {
             error("Search backfill is already running")
         }
-        RustSdkPendingTask(innerClient.runSearchBackfill(strategy.map()))
-            .also { currentSearchBackfillTaskHandle.set(it) }
+        error("Search backfill is not available in Matrix Rust SDK 26.09.26; this test build does not claim it is supported")
     }
 
     override fun isSearchBackfillRunning(): Boolean {
