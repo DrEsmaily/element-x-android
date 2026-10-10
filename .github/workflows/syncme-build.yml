@@ -18,6 +18,7 @@ on:
       - syncme-229-capabilities-off-main
       - syncme-232-presence-event-clearlogs
       - syncme-233-presence-lifecycle
+      - syncme-234-keystore-startup-io
     paths:
       - '.github/syncme-release-trigger.txt'
 
