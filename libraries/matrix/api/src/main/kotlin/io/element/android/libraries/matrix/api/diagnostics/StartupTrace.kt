@@ -86,6 +86,33 @@ object StartupTrace {
         }
     }
 
+    /**
+     * Clear retained diagnostic runs without touching Matrix caches, sessions or app data.
+     * Must be called from a background dispatcher. Serialize with the writer so old
+     * queued append operations cannot recreate deleted reports.
+     */
+    fun clearReports(): Boolean {
+        val folder = directory ?: return false
+        return runCatching {
+            worker.submit<Boolean> {
+                val active = target
+                val files = folder.listFiles { f ->
+                    f.isFile && f.name.startsWith("run-") && f.name.endsWith(".txt")
+                }.orEmpty()
+                var success = true
+                files.forEach { file ->
+                    val cleared = if (file == active) {
+                        runCatching { file.writeText("") }.isSuccess
+                    } else {
+                        file.delete()
+                    }
+                    if (!cleared) success = false
+                }
+                success
+            }.get()
+        }.getOrDefault(false)
+    }
+
     fun mark(event: String) {
         val file = target ?: return
         val safe = event.replace(Regex("[^a-zA-Z0-9_.:-]"), "_").take(240)
