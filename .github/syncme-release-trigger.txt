@@ -50,3 +50,5 @@ Diagnostics report export corrected using cache FileProvider.
 
 Diagnostics text viewer / copy all release.\n
 Deep startup trace: complete stacks, window first draw and focus.
+
+Build 224 uncompressed-native A/B test: -PuseLegacyPackaging=false; unchanged app code.
