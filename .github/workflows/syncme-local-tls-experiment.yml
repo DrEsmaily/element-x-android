@@ -47,7 +47,7 @@ jobs:
           begin="""        val validChain = try {
                       trustManager.checkServerTrusted"""
           assert s.count(begin)==1
-          replacement="""        syncMeTlsTrace("tls_verify_" + (if (serverName == "syncme.ir" || serverName.endsWith(".syncme.ir")) "firstparty" else "other_host"))
+          replacement="""        syncMeTlsTrace("tls_host_" + serverName)\n        syncMeTlsTrace("tls_verify_" + (if (serverName == "syncme.ir" || serverName.endsWith(".syncme.ir")) "firstparty" else "other_host"))
                   syncMeTlsTrace("tls_verify_thread_" + (if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) "main" else "background"))
                   syncMeTlsTrace("tls_chain_validation_begin")
                   val validChain = try {
