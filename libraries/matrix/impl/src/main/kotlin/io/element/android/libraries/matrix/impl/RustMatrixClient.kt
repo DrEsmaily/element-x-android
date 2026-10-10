@@ -564,7 +564,14 @@ class RustMatrixClient(
         StartupTrace.mark("ignored_users_fetch_begin")
         val ignoredUsersStart = android.os.SystemClock.elapsedRealtime()
         try {
-            channel.trySend(innerClient.ignoredUsers().map(::UserId).toImmutableList())
+            val ignored = innerClient.ignoredUsers().map(::UserId).toImmutableList()
+            StartupTrace.mark("ignored_users_fetch_success_count_" + ignored.size)
+            channel.trySend(ignored)
+        } catch (error: Exception) {
+            StartupTrace.mark("ignored_users_fetch_failure_" + error.javaClass.simpleName + "_" +
+                (error.message ?: "unknown").replace(Regex("https?://[^\\s]+"), "url_redacted")
+                    .replace(Regex("[A-Za-z0-9_-]{32,}"), "value_redacted").take(120))
+            throw error
         } finally {
             StartupTrace.mark("ignored_users_fetch_elapsed_ms_" +
                 (android.os.SystemClock.elapsedRealtime() - ignoredUsersStart))
