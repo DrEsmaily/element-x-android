@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
 import org.matrix.rustcomponents.sdk.SyncServiceState
 import timber.log.Timber
+import io.element.android.libraries.matrix.api.diagnostics.StartupTrace
+import android.os.SystemClock
 import java.util.concurrent.atomic.AtomicBoolean
 import org.matrix.rustcomponents.sdk.SyncService as InnerSyncService
 
@@ -40,9 +42,13 @@ class RustSyncService(
                 Timber.d("Can't start sync: service is not ready")
                 return@runCatchingExceptions
             }
+            StartupTrace.mark("rust_sync_start_begin")
+            val startedAt = SystemClock.elapsedRealtime()
             Timber.i("Start sync")
             inner.start()
+            StartupTrace.mark("rust_sync_start_return_elapsed_ms_" + (SystemClock.elapsedRealtime() - startedAt))
         }.onFailure {
+            StartupTrace.mark("rust_sync_start_failure_" + diagnosticError(it))
             Timber.d("Start sync failed: $it")
         }
     }
@@ -74,8 +80,20 @@ class RustSyncService(
             .distinctUntilChanged()
             .onEach { state ->
                 Timber.i("Sync state=$state")
+                StartupTrace.mark("rust_sync_state_" + state.toString())
             }
             .stateIn(sessionCoroutineScope, SharingStarted.Eagerly, SyncState.Idle)
+
+    private fun diagnosticError(error: Throwable): String {
+        val chain = generateSequence(error) { it.cause }.take(6)
+            .joinToString("_caused_by_") { cause ->
+                cause.javaClass.simpleName + "_" + (cause.message ?: "no_message")
+                    .replace(Regex("https?://[^\\s]+"), "url_redacted")
+                    .replace(Regex("[A-Za-z0-9_-]{32,}"), "value_redacted")
+                    .take(90)
+            }
+        return chain.take(210)
+    }
 
     override val isOnline: StateFlow<Boolean> = syncState.mapState { it != SyncState.Offline }
 }
