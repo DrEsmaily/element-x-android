@@ -7,6 +7,7 @@ on:
       - 'app/src/main/kotlin/io/element/android/x/NetworkDiagnostics.kt'
       - 'app/src/main/kotlin/io/element/android/x/ElementXApplication.kt'
       - 'libraries/matrix/impl/src/main/kotlin/io/element/android/libraries/matrix/impl/sync/RustSyncService.kt'
+      - 'libraries/matrix/impl/src/main/kotlin/io/element/android/libraries/matrix/impl/RustMatrixClient.kt'
   workflow_dispatch:
 permissions:
   contents: read
