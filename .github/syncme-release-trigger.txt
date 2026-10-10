@@ -57,3 +57,5 @@ Presence offline latency test while retaining latest-ten diagnostics.
 Presence: Matrix unavailable on background, online on foreground; persistent diagnostics kept.
 
 Build 228: move ignoredUsers Rust TLS/CRL FFI off main dispatcher; serialize presence status PUTs, suppress duplicates, respect 429 Retry-After. Retain last-ten startup traces.
+
+SyncMe 229: move SDK homeserver capability calls to IO dispatcher for startup TLS stall test.
