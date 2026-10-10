@@ -41,6 +41,7 @@ class ElementXApplication : Application(), DependencyInjectionGraphOwner, Config
     override fun onCreate() {
         super.onCreate()
         StartupTrace.initialize(this)
+        NetworkDiagnostics.start(this)
 
         enableStrictMode()
 
