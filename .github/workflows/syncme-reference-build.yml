@@ -1,0 +1,31 @@
+name: SyncMe Reference ARM64
+on:
+  push:
+    branches: [syncme-234-reference-away-orange-20261010]
+    paths: ['.github/workflows/syncme-reference-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Disable release shrinking
+        run: sed -i '/optimization {/{n;s/enable = true/enable = false/;}' app/build.gradle.kts
+      - name: Build ARM64 no compression
+        run: ./gradlew :app:assembleGplayRelease -PuseLegacyPackaging=false -x lintVitalGplayRelease --stacktrace --no-configuration-cache
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SyncMe-234-Away-Reference-ARM64
+          path: |
+            app/build/outputs/apk/gplay/release/*arm64-v8a*release.apk
+            SYNCME_REFERENCE_BUILD.md
+            .github/SYNCME_CONTINUATION_MASTER.txt
+          if-no-files-found: error
