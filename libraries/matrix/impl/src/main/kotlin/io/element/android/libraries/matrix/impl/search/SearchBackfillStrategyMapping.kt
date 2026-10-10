@@ -7,15 +7,5 @@
 
 package io.element.android.libraries.matrix.impl.search
 
-import io.element.android.libraries.matrix.api.search.SearchBackfillStrategy
-import uniffi.matrix_sdk.SearchBackfillStrategy as RustSearchBackfillStrategy
-
-fun RustSearchBackfillStrategy.map(): SearchBackfillStrategy = when (this) {
-    RustSearchBackfillStrategy.FOREGROUND -> SearchBackfillStrategy.FOREGROUND
-    RustSearchBackfillStrategy.BACKGROUND -> SearchBackfillStrategy.BACKGROUND
-}
-
-fun SearchBackfillStrategy.map(): RustSearchBackfillStrategy = when (this) {
-    SearchBackfillStrategy.FOREGROUND -> RustSearchBackfillStrategy.FOREGROUND
-    SearchBackfillStrategy.BACKGROUND -> RustSearchBackfillStrategy.BACKGROUND
-}
+// The SDK 26.09.26 does not expose SearchBackfillStrategy.
+// Keep this compatibility file free of references to an absent Rust FFI type.
