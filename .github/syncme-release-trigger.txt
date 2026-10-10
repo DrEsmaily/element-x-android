@@ -52,3 +52,5 @@ Diagnostics text viewer / copy all release.\n
 Deep startup trace: complete stacks, window first draw and focus.
 
 Build 224 uncompressed-native A/B test: -PuseLegacyPackaging=false; unchanged app code.
+
+Run ARM64 no native compression, no release optimization; compare APK bytes and ZIP artifact separately. 2026-10-10 diagnostic.
