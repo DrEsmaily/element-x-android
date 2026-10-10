@@ -315,7 +315,10 @@ class RoomListPresenter(
                     fullScreenIntentPermissionsState = fullScreenIntentPermissionsPresenter.present(),
                     batteryOptimizationState = batteryOptimizationPresenter.present(),
                     summaries = roomSummaries.dataOrNull().orEmpty().map { summary ->
-                        summary.copy(isOnline = presenceStates[summary.dmUserId?.let(::UserId)] is UserPresence.Online)
+                        summary.copy(
+                            isOnline = presenceStates[summary.dmUserId?.let(::UserId)] is UserPresence.Online,
+                            isAway = presenceStates[summary.dmUserId?.let(::UserId)] is UserPresence.Away,
+                        )
                     }.toImmutableList(),
                     showAllActivity = showAllActivity,
                     seenRoomInvites = seenRoomInvites.toImmutableSet(),
