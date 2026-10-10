@@ -48,7 +48,7 @@ class RustSyncService(
             inner.start()
             StartupTrace.mark("rust_sync_start_return_elapsed_ms_" + (SystemClock.elapsedRealtime() - startedAt))
         }.onFailure {
-            StartupTrace.mark("rust_sync_start_failure_" + diagnosticError(it))
+            StartupTrace.recordFailure("rust_sync_start", it)
             Timber.d("Start sync failed: $it")
         }
     }
@@ -64,7 +64,7 @@ class RustSyncService(
             inner.stop()
             StartupTrace.mark("rust_sync_stop_return")
         }.onFailure {
-            StartupTrace.mark("rust_sync_stop_failure_" + diagnosticError(it))
+            StartupTrace.recordFailure("rust_sync_stop", it)
             Timber.d("Stop sync failed: $it")
         }
     }
