@@ -266,6 +266,25 @@ class MainActivity : NodeActivity() {
                     clipboard.setPrimaryClip(android.content.ClipData.newPlainText("SyncMe diagnostics", report))
                     Toast.makeText(this@MainActivity, "Diagnostics copied", Toast.LENGTH_SHORT).show()
                 }
+                .setNeutralButton("Clear Logs") { _, _ ->
+                    android.app.AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Clear startup logs?")
+                        .setMessage("Delete all saved startup diagnostics? Your chats, account and Matrix cache will not be affected.")
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton("Clear") { _, _ ->
+                            lifecycleScope.launch {
+                                val cleared = withContext(Dispatchers.IO) {
+                                    StartupTrace.clearReports()
+                                }
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    if (cleared) "Startup logs cleared" else "Unable to clear logs",
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
+                        }
+                        .show()
+                }
                 .setNegativeButton("Close", null)
                 .show()
         }
