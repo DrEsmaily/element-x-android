@@ -59,3 +59,5 @@ Presence: Matrix unavailable on background, online on foreground; persistent dia
 Build 228: move ignoredUsers Rust TLS/CRL FFI off main dispatcher; serialize presence status PUTs, suppress duplicates, respect 429 Retry-After. Retain last-ten startup traces.
 
 SyncMe 229 — off-main homeserver capability TLS checks regression test
+
+Release: retain build 231 TLS fix; add safe Clear Logs and event-driven presence without 10-person periodic recheck.
