@@ -210,8 +210,9 @@ private fun RoomSummaryScaffoldRow(
                 },
                 hideImage = hideAvatarImage,
             )
-            if (room.isDm && room.isOnline && !hideAvatarImage) {
-                Box(modifier = Modifier.size(10.dp).background(Color(0xFF2BCB74), CircleShape))
+            if (room.isDm && !hideAvatarImage && (room.isOnline || room.isAway)) {
+                val presenceColor = if (room.isOnline) Color(0xFF2BCB74) else Color(0xFFFFA726)
+                Box(modifier = Modifier.size(10.dp).background(presenceColor, CircleShape))
             }
         }
         Spacer(modifier = Modifier.width(16.dp))
