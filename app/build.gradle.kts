@@ -127,7 +127,8 @@ android {
             signingConfig = signingConfigs.getByName("debug")
 
             optimization {
-                enable = true
+                // SyncMe ARM64 non-minified diagnostic build.
+                enable = false
                 keepRules {
                     // Equivalent of adding `getDefaultProguardFile("proguard-android-optimize.txt")` (this is the default value).
                     includeDefault = true
