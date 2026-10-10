@@ -14,6 +14,7 @@ on:
       - syncme-225-last-ten-startup-logs
       - syncme-226-presence-offline-fast
       - syncme-227-background-away
+      - syncme-228-mainthread-presence-429
     paths:
       - '.github/syncme-release-trigger.txt'
 
